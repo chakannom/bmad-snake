@@ -13,6 +13,10 @@ const COLORS = {
 export type GameUI = {
   canvas: HTMLCanvasElement;
   statusEl: HTMLSpanElement;
+  highScoreEl: HTMLSpanElement;
+  difficultySelect: HTMLSelectElement;
+  startButton: HTMLButtonElement;
+  pauseButton: HTMLButtonElement;
   directionButtons: HTMLButtonElement[];
   restartButton: HTMLButtonElement;
   updateHud: (state: GameState, stage: StageConfig, totalStages: number) => void;
@@ -47,11 +51,22 @@ export const mountGameUI = (
       <section class="hud">
         <span id="score">스테이지 점수: 0 / 0</span>
         <span id="total-score">누적 점수: 0</span>
+        <span id="high-score">최고 점수: 0</span>
       </section>
       <section class="hud">
         <span id="timer">남은 시간: 0초</span>
         <span id="speed">속도: 0ms</span>
         <span id="status">상태: 준비</span>
+      </section>
+      <section class="hud controls">
+        <label for="difficulty-select">난이도</label>
+        <select id="difficulty-select" aria-label="난이도 선택">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button type="button" id="start-btn" class="control-inline">START</button>
+        <button type="button" id="pause-btn" class="control-inline">PAUSE</button>
       </section>
       <canvas id="game" width="${boardSize * CELL}" height="${boardSize * CELL}"></canvas>
       <section class="touch-controls" aria-label="모바일 컨트롤">
@@ -71,9 +86,13 @@ export const mountGameUI = (
   const mapNameEl = document.querySelector<HTMLSpanElement>("#map-name");
   const scoreEl = document.querySelector<HTMLSpanElement>("#score");
   const totalScoreEl = document.querySelector<HTMLSpanElement>("#total-score");
+  const highScoreEl = document.querySelector<HTMLSpanElement>("#high-score");
   const timerEl = document.querySelector<HTMLSpanElement>("#timer");
   const speedEl = document.querySelector<HTMLSpanElement>("#speed");
   const statusEl = document.querySelector<HTMLSpanElement>("#status");
+  const difficultySelect = document.querySelector<HTMLSelectElement>("#difficulty-select");
+  const startButton = document.querySelector<HTMLButtonElement>("#start-btn");
+  const pauseButton = document.querySelector<HTMLButtonElement>("#pause-btn");
   const directionButtons = Array.from(
     document.querySelectorAll<HTMLButtonElement>(".control-btn[data-dir]")
   );
@@ -84,9 +103,13 @@ export const mountGameUI = (
     !mapNameEl ||
     !scoreEl ||
     !totalScoreEl ||
+    !highScoreEl ||
     !timerEl ||
     !speedEl ||
     !statusEl ||
+    !difficultySelect ||
+    !startButton ||
+    !pauseButton ||
     !restartButton
   ) {
     throw new Error("UI init failed");
@@ -122,6 +145,10 @@ export const mountGameUI = (
   return {
     canvas,
     statusEl,
+    highScoreEl,
+    difficultySelect,
+    startButton,
+    pauseButton,
     directionButtons,
     restartButton,
     updateHud,

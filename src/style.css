@@ -54,6 +54,21 @@ p {
   font-size: 0.95rem;
 }
 
+.controls {
+  align-items: center;
+}
+
+#difficulty-select,
+.control-inline {
+  border: 1px solid #3b434d;
+  background: #2d3138;
+  color: #f5f6f7;
+  border-radius: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-weight: 700;
+}
+
 #game {
   width: 100%;
   height: auto;

@@ -16,7 +16,11 @@ export type StepResult = {
   speedChanged: boolean;
 };
 
-export const resetStageRun = (state: GameState, stage: StageConfig): void => {
+export const resetStageRun = (
+  state: GameState,
+  stage: StageConfig,
+  initialTickMs: number = stage.tickMs
+): void => {
   state.direction = "right";
   state.nextDirection = "right";
   state.snake = START_SNAKE.map((segment) => ({ ...segment }));
@@ -24,7 +28,7 @@ export const resetStageRun = (state: GameState, stage: StageConfig): void => {
   state.isCleared = false;
   state.obstacleSet = new Set(stage.obstacles.map(pointKey));
   state.remainingMs = stage.timeLimitSec * 1000;
-  state.currentTickMs = stage.tickMs;
+  state.currentTickMs = initialTickMs;
   spawnFood(state);
 };
 
@@ -98,4 +102,3 @@ export const stepGame = (state: GameState, stage: StageConfig): StepResult => {
   state.snake.pop();
   return { outcome: "running", speedChanged: false };
 };
-
