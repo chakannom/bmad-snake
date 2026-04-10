@@ -1,165 +1,104 @@
 import "./style.css";
 
-type Point = { x: number; y: number };
-type Direction = "up" | "down" | "left" | "right";
-
-const BOARD_SIZE = 20;
-const CELL = 20;
-const TICK_MS = 120;
+import { BOARD_SIZE, DEATH_PENALTY_RATIO, TOTAL_STAGES } from "./game/config";
+import { canTurn, isRestartKey, nextDirectionFromKey } from "./game/input";
+import { applyDeathPenalty, resetStageRun, stepGame } from "./game/rules";
+import { createInitialState } from "./game/state";
+import { STAGES } from "./game/stages";
+import { mountGameUI } from "./game/ui";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Cannot find #app");
 
-app.innerHTML = `
-  <main class="layout">
-    <header>
-      <h1>BMAD Snake</h1>
-      <p>방향키로 이동, 스페이스로 재시작</p>
-    </header>
-    <section class="hud">
-      <span id="score">점수: 0</span>
-      <span id="status">상태: 진행중</span>
-    </section>
-    <canvas id="game" width="${BOARD_SIZE * CELL}" height="${BOARD_SIZE * CELL}"></canvas>
-  </main>
-`;
+const ui = mountGameUI(app, BOARD_SIZE, TOTAL_STAGES);
+const state = createInitialState(STAGES[0].tickMs);
 
-const canvas = document.querySelector<HTMLCanvasElement>("#game");
-const scoreEl = document.querySelector<HTMLSpanElement>("#score");
-const statusEl = document.querySelector<HTMLSpanElement>("#status");
-if (!canvas || !scoreEl || !statusEl) throw new Error("UI init failed");
-
-const ctx = canvas.getContext("2d");
-if (!ctx) throw new Error("Canvas not supported");
-
-let snake: Point[] = [];
-let direction: Direction = "right";
-let nextDirection: Direction = "right";
-let food: Point = { x: 10, y: 10 };
-let score = 0;
-let isGameOver = false;
 let timer: number | null = null;
 
-const randomPoint = (): Point => ({
-  x: Math.floor(Math.random() * BOARD_SIZE),
-  y: Math.floor(Math.random() * BOARD_SIZE)
-});
+const currentStage = () => STAGES[state.stageIndex];
 
-const equal = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
+const renderAll = (): void => {
+  ui.updateHud(state, currentStage(), TOTAL_STAGES);
+  ui.renderBoard(state, currentStage());
+};
 
-const spawnFood = (): void => {
-  let next = randomPoint();
-  while (snake.some((segment) => equal(segment, next))) {
-    next = randomPoint();
+const applyTimer = (): void => {
+  if (timer) window.clearInterval(timer);
+  timer = window.setInterval(step, state.currentTickMs);
+};
+
+const finish = (message: string): void => {
+  state.isGameOver = true;
+  if (timer) {
+    window.clearInterval(timer);
+    timer = null;
   }
-  food = next;
+  ui.statusEl.textContent = message;
+  renderAll();
 };
 
-const drawCell = (point: Point, color: string): void => {
-  ctx.fillStyle = color;
-  ctx.fillRect(point.x * CELL, point.y * CELL, CELL - 1, CELL - 1);
+const resetCurrentStageRun = (statusMessage: string): void => {
+  resetStageRun(state, currentStage());
+  renderAll();
+  ui.statusEl.textContent = statusMessage;
+  applyTimer();
 };
 
-const render = (): void => {
-  ctx.fillStyle = "#151b14";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+const startStage = (nextStageIndex: number, resetTotalScore: boolean): void => {
+  state.stageIndex = nextStageIndex;
+  state.stageScore = 0;
+  if (resetTotalScore) state.totalScore = 0;
+  resetCurrentStageRun(`상태: Stage ${currentStage().level} 진행중`);
+};
 
-  drawCell(food, "#ff7f11");
-
-  snake.forEach((segment, index) => {
-    drawCell(segment, index === 0 ? "#80ed99" : "#57cc99");
-  });
+const handleDeath = (): void => {
+  applyDeathPenalty(state);
+  resetCurrentStageRun(
+    `상태: 사망(점수 -${Math.round(DEATH_PENALTY_RATIO * 100)}%), Stage ${currentStage().level} 재도전`
+  );
 };
 
 const step = (): void => {
-  if (isGameOver) return;
+  if (state.isGameOver || state.isCleared) return;
 
-  direction = nextDirection;
-  const head = snake[0];
-  const movement: Record<Direction, Point> = {
-    up: { x: 0, y: -1 },
-    down: { x: 0, y: 1 },
-    left: { x: -1, y: 0 },
-    right: { x: 1, y: 0 }
-  };
+  const result = stepGame(state, currentStage());
+  if (result.speedChanged) {
+    applyTimer();
+  }
 
-  const nextHead = {
-    x: head.x + movement[direction].x,
-    y: head.y + movement[direction].y
-  };
-
-  const outOfBounds =
-    nextHead.x < 0 ||
-    nextHead.y < 0 ||
-    nextHead.x >= BOARD_SIZE ||
-    nextHead.y >= BOARD_SIZE;
-  const hitSelf = snake.some((segment) => equal(segment, nextHead));
-
-  if (outOfBounds || hitSelf) {
-    isGameOver = true;
-    statusEl.textContent = "상태: 게임 오버";
-    render();
+  if (result.outcome === "timeout") {
+    finish("상태: 제한 시간 실패");
+    return;
+  }
+  if (result.outcome === "death") {
+    handleDeath();
+    return;
+  }
+  if (result.outcome === "stage-clear") {
+    if (state.stageIndex === TOTAL_STAGES - 1) {
+      state.isCleared = true;
+      finish("상태: 모든 스테이지 클리어");
+      return;
+    }
+    startStage(state.stageIndex + 1, false);
     return;
   }
 
-  snake.unshift(nextHead);
-
-  if (equal(nextHead, food)) {
-    score += 10;
-    scoreEl.textContent = `점수: ${score}`;
-    spawnFood();
-  } else {
-    snake.pop();
-  }
-
-  render();
-};
-
-const start = (): void => {
-  snake = [
-    { x: 5, y: 10 },
-    { x: 4, y: 10 },
-    { x: 3, y: 10 }
-  ];
-  direction = "right";
-  nextDirection = "right";
-  score = 0;
-  isGameOver = false;
-  scoreEl.textContent = "점수: 0";
-  statusEl.textContent = "상태: 진행중";
-  spawnFood();
-  render();
-
-  if (timer) window.clearInterval(timer);
-  timer = window.setInterval(step, TICK_MS);
-};
-
-const opposite: Record<Direction, Direction> = {
-  up: "down",
-  down: "up",
-  left: "right",
-  right: "left"
+  renderAll();
 };
 
 window.addEventListener("keydown", (event) => {
-  if (event.code === "Space") {
-    start();
+  if (isRestartKey(event.code)) {
+    startStage(state.stageIndex, false);
     return;
   }
 
-  const map: Record<string, Direction> = {
-    ArrowUp: "up",
-    ArrowDown: "down",
-    ArrowLeft: "left",
-    ArrowRight: "right"
-  };
-  const next = map[event.code];
+  const next = nextDirectionFromKey(event.code);
   if (!next) return;
-
-  if (opposite[direction] !== next) {
-    nextDirection = next;
+  if (canTurn(state.direction, next)) {
+    state.nextDirection = next;
   }
 });
 
-start();
+startStage(0, true);
 

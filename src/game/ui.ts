@@ -1,0 +1,96 @@
+import { CELL } from "./config";
+import type { GameState } from "./state";
+import type { Point, StageConfig } from "./types";
+
+export type GameUI = {
+  ctx: CanvasRenderingContext2D;
+  statusEl: HTMLSpanElement;
+  updateHud: (state: GameState, stage: StageConfig, totalStages: number) => void;
+  renderBoard: (state: GameState, stage: StageConfig) => void;
+};
+
+const drawCell = (
+  ctx: CanvasRenderingContext2D,
+  point: Point,
+  color: string
+): void => {
+  if (point.x < 0 || point.y < 0) return;
+  ctx.fillStyle = color;
+  ctx.fillRect(point.x * CELL, point.y * CELL, CELL - 1, CELL - 1);
+};
+
+export const mountGameUI = (
+  app: HTMLDivElement,
+  boardSize: number,
+  totalStages: number
+): GameUI => {
+  app.innerHTML = `
+    <main class="layout">
+      <header>
+        <h1>BMAD Snake</h1>
+        <p>방향키로 이동, 스페이스로 현재 스테이지 재시작</p>
+      </header>
+      <section class="hud">
+        <span id="stage">스테이지: 1 / ${totalStages}</span>
+        <span id="map-name">맵: -</span>
+      </section>
+      <section class="hud">
+        <span id="score">스테이지 점수: 0 / 0</span>
+        <span id="total-score">누적 점수: 0</span>
+      </section>
+      <section class="hud">
+        <span id="timer">남은 시간: 0초</span>
+        <span id="speed">속도: 0ms</span>
+        <span id="status">상태: 준비</span>
+      </section>
+      <canvas id="game" width="${boardSize * CELL}" height="${boardSize * CELL}"></canvas>
+    </main>
+  `;
+
+  const canvas = document.querySelector<HTMLCanvasElement>("#game");
+  const stageEl = document.querySelector<HTMLSpanElement>("#stage");
+  const mapNameEl = document.querySelector<HTMLSpanElement>("#map-name");
+  const scoreEl = document.querySelector<HTMLSpanElement>("#score");
+  const totalScoreEl = document.querySelector<HTMLSpanElement>("#total-score");
+  const timerEl = document.querySelector<HTMLSpanElement>("#timer");
+  const speedEl = document.querySelector<HTMLSpanElement>("#speed");
+  const statusEl = document.querySelector<HTMLSpanElement>("#status");
+  if (!canvas || !stageEl || !mapNameEl || !scoreEl || !totalScoreEl || !timerEl || !speedEl || !statusEl) {
+    throw new Error("UI init failed");
+  }
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas not supported");
+
+  const updateHud = (state: GameState, stage: StageConfig, totalStageCount: number): void => {
+    stageEl.textContent = `스테이지: ${stage.level} / ${totalStageCount}`;
+    mapNameEl.textContent = `맵: ${stage.mapName}`;
+    scoreEl.textContent = `스테이지 점수: ${state.stageScore} / ${stage.targetScore}`;
+    totalScoreEl.textContent = `누적 점수: ${state.totalScore}`;
+    timerEl.textContent = `남은 시간: ${Math.max(0, Math.ceil(state.remainingMs / 1000))}초`;
+    speedEl.textContent = `속도: ${state.currentTickMs}ms`;
+  };
+
+  const renderBoard = (state: GameState, stage: StageConfig): void => {
+    ctx.fillStyle = "#151b14";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    stage.obstacles.forEach((obstacle) => {
+      drawCell(ctx, obstacle, "#606c38");
+    });
+
+    drawCell(ctx, state.food, "#ff7f11");
+
+    state.snake.forEach((segment, index) => {
+      drawCell(ctx, segment, index === 0 ? "#80ed99" : "#57cc99");
+    });
+  };
+
+  return {
+    ctx,
+    statusEl,
+    updateHud,
+    renderBoard
+  };
+};
+
