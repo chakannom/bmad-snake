@@ -5,7 +5,8 @@ import { canTurn, isRestartKey, nextDirectionFromKey } from "./game/input";
 import { applyDeathPenalty, resetStageRun, stepGame } from "./game/rules";
 import { createInitialState } from "./game/state";
 import { STAGES } from "./game/stages";
-import { mountGameUI } from "./game/ui";
+import { directionFromButton, mountGameUI } from "./game/ui";
+import type { Direction } from "./game/types";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Cannot find #app");
@@ -49,6 +50,12 @@ const startStage = (nextStageIndex: number, resetTotalScore: boolean): void => {
   state.stageScore = 0;
   if (resetTotalScore) state.totalScore = 0;
   resetCurrentStageRun(`상태: Stage ${currentStage().level} 진행중`);
+};
+
+const applyDirection = (next: Direction): void => {
+  if (canTurn(state.direction, next)) {
+    state.nextDirection = next;
+  }
 };
 
 const handleDeath = (): void => {
@@ -95,10 +102,58 @@ window.addEventListener("keydown", (event) => {
 
   const next = nextDirectionFromKey(event.code);
   if (!next) return;
-  if (canTurn(state.direction, next)) {
-    state.nextDirection = next;
-  }
+  applyDirection(next);
 });
 
-startStage(0, true);
+ui.directionButtons.forEach((button) => {
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    const next = directionFromButton(button);
+    if (!next) return;
+    applyDirection(next);
+  });
+});
 
+ui.restartButton.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  startStage(state.stageIndex, false);
+});
+
+let touchStartX: number | null = null;
+let touchStartY: number | null = null;
+const SWIPE_THRESHOLD = 20;
+
+ui.canvas.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.touches.length !== 1) return;
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  },
+  { passive: true }
+);
+
+ui.canvas.addEventListener(
+  "touchend",
+  (event) => {
+    if (touchStartX === null || touchStartY === null) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    touchStartX = null;
+    touchStartY = null;
+
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
+
+    if (absX > absY) {
+      applyDirection(dx > 0 ? "right" : "left");
+      return;
+    }
+    applyDirection(dy > 0 ? "down" : "up");
+  },
+  { passive: true }
+);
+
+startStage(0, true);

@@ -13,6 +13,7 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
+  padding: 12px;
 }
 
 .layout {
@@ -47,4 +48,62 @@ p {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   background: #151b14;
+  touch-action: none;
+}
+
+.touch-controls {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    ". up ."
+    "left restart right"
+    ". down .";
+  gap: 8px;
+}
+
+.control-btn {
+  border: 1px solid #38563b;
+  background: #111a10;
+  color: #ecf8ea;
+  border-radius: 8px;
+  min-height: 46px;
+  font-weight: 700;
+  font-size: 1rem;
+  touch-action: manipulation;
+}
+
+.control-btn.up {
+  grid-area: up;
+}
+
+.control-btn.left {
+  grid-area: left;
+}
+
+.control-btn.right {
+  grid-area: right;
+}
+
+.control-btn.down {
+  grid-area: down;
+}
+
+.control-btn.restart {
+  grid-area: restart;
+  font-size: 0.85rem;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .touch-controls {
+    display: grid;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout {
+    width: 100%;
+  }
+  .hud {
+    font-size: 0.88rem;
+  }
 }
