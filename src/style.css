@@ -1,7 +1,14 @@
 :root {
   font-family: "Pretendard", "Noto Sans KR", sans-serif;
-  color: #ecf8ea;
-  background: radial-gradient(circle at 10% 10%, #355834 0%, #10160f 55%);
+  color: #f5f6f7;
+  background:
+    radial-gradient(circle at 10% 8%, #2d2f34 0%, #1f2125 38%, #141518 100%);
+  --surface: #242526;
+  --surface-border: #3a3f47;
+  --brand-strong: #25c2a0;
+  --brand-accent: #1fa588;
+  --text-primary: #f5f6f7;
+  --text-muted: #c9cdd3;
 }
 
 * {
@@ -20,16 +27,22 @@ body {
   width: min(92vw, 480px);
   display: grid;
   gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 14px 34px #0000004a;
 }
 
 h1 {
   margin: 0;
   letter-spacing: 0.03em;
+  color: var(--brand-strong);
 }
 
 p {
   margin: 4px 0 0;
-  opacity: 0.85;
+  color: var(--text-muted);
 }
 
 .hud {
@@ -44,10 +57,10 @@ p {
 #game {
   width: 100%;
   height: auto;
-  border: 1px solid #38563b;
+  border: 1px solid #3b434d;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  background: #151b14;
+  box-shadow: 0 10px 24px #00000066;
+  background: #1b1b1d;
   touch-action: none;
 }
 
@@ -62,14 +75,19 @@ p {
 }
 
 .control-btn {
-  border: 1px solid #38563b;
-  background: #111a10;
-  color: #ecf8ea;
+  border: 1px solid #3b434d;
+  background: #2d3138;
+  color: #f5f6f7;
   border-radius: 8px;
   min-height: 46px;
   font-weight: 700;
   font-size: 1rem;
   touch-action: manipulation;
+  box-shadow: 0 4px 12px #00000042;
+}
+
+.control-btn:active {
+  background: #373c45;
 }
 
 .control-btn.up {

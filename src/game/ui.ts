@@ -2,6 +2,14 @@ import { CELL } from "./config";
 import type { GameState } from "./state";
 import type { Direction, Point, StageConfig } from "./types";
 
+const COLORS = {
+  board: "#1b1b1d",
+  obstacle: "#4a4f58",
+  food: "#f0b429",
+  snakeHead: "#25c2a0",
+  snakeBody: "#1fa588"
+} as const;
+
 export type GameUI = {
   canvas: HTMLCanvasElement;
   statusEl: HTMLSpanElement;
@@ -97,17 +105,17 @@ export const mountGameUI = (
   };
 
   const renderBoard = (state: GameState, stage: StageConfig): void => {
-    ctx.fillStyle = "#151b14";
+    ctx.fillStyle = COLORS.board;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     stage.obstacles.forEach((obstacle) => {
-      drawCell(ctx, obstacle, "#606c38");
+      drawCell(ctx, obstacle, COLORS.obstacle);
     });
 
-    drawCell(ctx, state.food, "#ff7f11");
+    drawCell(ctx, state.food, COLORS.food);
 
     state.snake.forEach((segment, index) => {
-      drawCell(ctx, segment, index === 0 ? "#80ed99" : "#57cc99");
+      drawCell(ctx, segment, index === 0 ? COLORS.snakeHead : COLORS.snakeBody);
     });
   };
 
