@@ -50,6 +50,10 @@ h2 {
   margin: 0 0 8px;
 }
 
+h3 {
+  margin: 0 0 8px;
+}
+
 .muted {
   margin: 0;
   color: #334155;
@@ -99,6 +103,12 @@ h2 {
 .panel--signal-urgent {
   background: #fff1f2;
   border-color: #e11d48;
+}
+
+.panel--report {
+  margin-top: 12px;
+  text-align: left;
+  background: #f8fafc;
 }
 
 .stats div {

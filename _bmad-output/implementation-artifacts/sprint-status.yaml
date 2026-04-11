@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T04:30:00+0900
+last_updated: 2026-04-12T04:40:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -65,10 +65,10 @@ development_status:
   5-3-privacy-minimal-collection-notice: done
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-externalized-balance-parameters: backlog
-  6-2-kpi-based-balance-reporting: backlog
-  6-3-diagnostics-log-standardization: backlog
+  epic-6: done
+  6-1-externalized-balance-parameters: done
+  6-2-kpi-based-balance-reporting: done
+  6-3-diagnostics-log-standardization: done
   epic-6-retrospective: optional
 
   epic-7: backlog

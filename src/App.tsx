@@ -13,7 +13,11 @@ import {
 } from './game/sessionMachine'
 import { createInitialGame, tick, updateDirection } from './game/engine'
 import { createGa4Adapter } from './analytics/adapter'
+import { eventLog } from './analytics/adapter'
 import { STAGES, getStageById } from './stage/catalog'
+import { buildBalanceReport } from './balance/report'
+import { applyBalance, listBalancePatches } from './config/balance'
+import { readLogs, writeLog } from './diagnostics/logger'
 import {
   canPlayStage,
   loadProgress,
@@ -36,7 +40,9 @@ function App() {
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
   const touchStartRef = useRef<Point | null>(null)
 
-  const selectedStage = getStageById(progress.selectedStageId)
+  const selectedStage = applyBalance(getStageById(progress.selectedStageId))
+  const report = buildBalanceReport(eventLog)
+  const recentLogs = readLogs().slice(-4)
   const secondsLeft = Math.max(
     0,
     Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000),
@@ -151,10 +157,14 @@ function App() {
   }, [session.mode])
 
   const handleStart = () => {
-    const stage = getStageById(progress.selectedStageId)
+    const stage = applyBalance(getStageById(progress.selectedStageId))
     const nextSession = startSession(session)
     setGame(createInitialGame(stage))
     setSession(nextSession)
+    writeLog('info', 'SESSION_START', 'Session started', {
+      sessionId: nextSession.sessionId,
+      stageId: stage.id,
+    })
     analytics.track({
       name: 'snake_session_start',
       payload: {
@@ -174,10 +184,14 @@ function App() {
   }
 
   const handleRestart = () => {
-    const stage = getStageById(progress.selectedStageId)
+    const stage = applyBalance(getStageById(progress.selectedStageId))
     setGame(createInitialGame(stage))
     const nextSession = restartSession(session)
     setSession(nextSession)
+    writeLog('info', 'STAGE_RETRY', 'Retry from failure screen', {
+      sessionId: nextSession.sessionId,
+      stageId: stage.id,
+    })
     analytics.track({
       name: 'snake_stage_retry',
       payload: {
@@ -279,6 +293,18 @@ function App() {
             })}
           </div>
 
+          <div className="panel panel--report">
+            <h3>Balance Snapshot</h3>
+            <p>
+              Sessions: {report.totalSessions} · Avg Play Time:{' '}
+              {Math.round(report.avgPlayTimeMs / 1000)}s · Clear Rate:{' '}
+              {Math.round(report.clearRate * 100)}%
+            </p>
+            <p>
+              Tuned Stages: {Object.keys(listBalancePatches()).join(', ') || '-'}
+            </p>
+          </div>
+
           <button className="cta" onClick={handleStart}>
             {session.mode === 'cleared' ? 'Next Run' : 'Start Session'}
           </button>
@@ -330,6 +356,21 @@ function App() {
               키보드: Arrow/WASD · 모바일: 스와이프 · 즉시 역방향 차단 ·
               상태신호: RUNNING / TIME WARNING
             </p>
+          </section>
+
+          <section className="panel">
+            <h3>Diagnostics</h3>
+            {recentLogs.length === 0 ? (
+              <p>No logs yet.</p>
+            ) : (
+              <ul>
+                {recentLogs.map((log) => (
+                  <li key={`${log.ts}-${log.code}`}>
+                    [{log.level}] {log.code} - {log.message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </>
       )}
