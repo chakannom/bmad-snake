@@ -262,6 +262,15 @@ function App() {
     setGame((prev) => updateDirection(prev, candidate))
   }
 
+  const handleDirectionInput = (direction: 'up' | 'down' | 'left' | 'right') => {
+    if (session.mode !== 'playing') {
+      return
+    }
+
+    setSession((prev) => applyInputDirection(prev, direction, 'swipe'))
+    setGame((prev) => updateDirection(prev, direction))
+  }
+
   return (
     <main className={`shell ${themeClass}`}>
       <header className="panel panel--header">
@@ -380,6 +389,40 @@ function App() {
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           />
+
+          <section className="touch-controls" aria-label="touch controls">
+            <button
+              className="control-btn up"
+              onClick={() => handleDirectionInput('up')}
+              aria-label="move up"
+            >
+              ↑
+            </button>
+            <button
+              className="control-btn left"
+              onClick={() => handleDirectionInput('left')}
+              aria-label="move left"
+            >
+              ←
+            </button>
+            <button
+              className="control-btn right"
+              onClick={() => handleDirectionInput('right')}
+              aria-label="move right"
+            >
+              →
+            </button>
+            <button
+              className="control-btn down"
+              onClick={() => handleDirectionInput('down')}
+              aria-label="move down"
+            >
+              ↓
+            </button>
+            <button className="control-btn restart" onClick={handleRestart}>
+              Restart
+            </button>
+          </section>
 
           <section className="panel controls">
             <p>

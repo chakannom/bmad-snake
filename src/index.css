@@ -1,12 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
-
 :root {
-  --edge: #0f172a;
-  --panel-bg: #ffffff;
-  font-family: 'IBM Plex Sans KR', 'Pretendard', 'Noto Sans KR', sans-serif;
-  color: #0f172a;
-  line-height: 1.4;
-  font-weight: 400;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  color: #f5f6f7;
+  background:
+    radial-gradient(circle at 10% 8%, #2d2f34 0%, #1f2125 38%, #141518 100%);
+  --surface: #242526;
+  --surface-border: #3a3f47;
+  --brand-strong: #25c2a0;
+  --brand-accent: #1fa588;
+  --text-primary: #f5f6f7;
+  --text-muted: #c9cdd3;
 }
 
 * {
@@ -16,14 +18,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(1100px 600px at 10% 0%, #fde68a 0%, transparent 58%),
-    radial-gradient(900px 460px at 100% 100%, #fecaca 0%, transparent 60%),
-    #f8fafc;
+  display: grid;
+  place-items: center;
+  padding: 12px;
 }
 
-h1,
-h2,
 button {
-  font-family: 'Space Grotesk', 'IBM Plex Sans KR', sans-serif;
+  font-family: inherit;
+  cursor: pointer;
 }
