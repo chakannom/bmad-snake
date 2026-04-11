@@ -3,7 +3,8 @@ import type { Point } from '../game/types'
 interface PlayfieldProps {
   cols: number
   rows: number
-  head: Point
+  snake: Point[]
+  food: Point
   onTouchStart: (x: number, y: number) => void
   onTouchEnd: (x: number, y: number) => void
 }
@@ -11,19 +12,28 @@ interface PlayfieldProps {
 export function Playfield({
   cols,
   rows,
-  head,
+  snake,
+  food,
   onTouchStart,
   onTouchEnd,
 }: PlayfieldProps) {
+  const snakeSet = new Set(snake.map((segment) => `${segment.x}:${segment.y}`))
   const cells = []
 
   for (let y = 0; y < rows; y += 1) {
     for (let x = 0; x < cols; x += 1) {
-      const active = x === head.x && y === head.y
+      const key = `${x}:${y}`
+      const hasSnake = snakeSet.has(key)
+      const hasFood = x === food.x && y === food.y
+      const className = hasSnake
+        ? 'cell cell--snake'
+        : hasFood
+          ? 'cell cell--food'
+          : 'cell'
       cells.push(
         <div
           key={`${x}-${y}`}
-          className={active ? 'cell cell--active' : 'cell'}
+          className={className}
           aria-hidden="true"
         />,
       )

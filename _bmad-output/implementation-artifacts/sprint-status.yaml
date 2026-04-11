@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T03:45:00+0900
+last_updated: 2026-04-12T04:00:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -41,10 +41,10 @@ development_status:
   1-3-cross-platform-input-policy: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-core-snake-engine-rules: backlog
-  2-2-stage-goal-timer-system: backlog
-  2-3-clear-fail-result-handling: backlog
+  epic-2: done
+  2-1-core-snake-engine-rules: done
+  2-2-stage-goal-timer-system: done
+  2-3-clear-fail-result-handling: done
   epic-2-retrospective: optional
 
   epic-3: backlog

@@ -118,8 +118,12 @@ h2 {
   background: #1e293b;
 }
 
-.cell--active {
+.cell--snake {
   background: radial-gradient(circle at 30% 25%, #fef9c3, #4ade80 58%, #14532d);
+}
+
+.cell--food {
+  background: radial-gradient(circle at 35% 35%, #fff1f2, #f43f5e 55%, #881337);
 }
 
 @media (max-width: 720px) {
