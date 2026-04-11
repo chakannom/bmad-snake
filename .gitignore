@@ -1,0 +1,10 @@
+# System
+.DS_Store
+
+# Build/deps
+node_modules/
+dist/
+
+# BMAD install outputs (local tooling/artifacts)
+.agents/
+_bmad/

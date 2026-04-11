@@ -1,0 +1,78 @@
+# generated: 2026-04-12T03:24:09+0900
+# last_updated: 2026-04-12T03:24:09+0900
+# project: bmad-snake
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+generated: 2026-04-12T03:24:09+0900
+last_updated: 2026-04-12T03:24:09+0900
+project: bmad-snake
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: backlog
+  1-1-starter-template-setup: backlog
+  1-2-session-start-restart-flow: backlog
+  1-3-cross-platform-input-policy: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-core-snake-engine-rules: backlog
+  2-2-stage-goal-timer-system: backlog
+  2-3-clear-fail-result-handling: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-stage-metadata-20maps-4tiers: backlog
+  3-2-stage-unlock-selection-flow: backlog
+  3-3-local-progress-persistence: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-gameplay-hud-core-status: backlog
+  4-2-result-screen-next-retry-actions: backlog
+  4-3-responsive-accessible-hud: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-event-schema-analytics-adapter: backlog
+  5-2-ga4-kpi-instrumentation: backlog
+  5-3-privacy-minimal-collection-notice: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-externalized-balance-parameters: backlog
+  6-2-kpi-based-balance-reporting: backlog
+  6-3-diagnostics-log-standardization: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-ghost-replay-extension-hook: backlog
+  7-2-daily-challenge-rule-hook: backlog
+  7-3-theme-map-extension-structure: backlog
+  epic-7-retrospective: optional
