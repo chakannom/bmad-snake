@@ -74,6 +74,24 @@ h2 {
   gap: 8px;
 }
 
+.panel--signal {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #f0fdf4;
+  border-color: #16a34a;
+}
+
+.panel--signal strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.panel--signal-urgent {
+  background: #fff1f2;
+  border-color: #e11d48;
+}
+
 .stats div {
   background: #fffbeb;
   border-radius: 12px;
@@ -161,6 +179,11 @@ h2 {
 
   .stats {
     grid-template-columns: 1fr;
+  }
+
+  .panel--signal {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .controls {

@@ -34,6 +34,11 @@ function App() {
   const touchStartRef = useRef<Point | null>(null)
 
   const selectedStage = getStageById(progress.selectedStageId)
+  const secondsLeft = Math.max(
+    0,
+    Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000),
+  )
+  const urgent = secondsLeft <= 7
 
   const platform = useMemo(
     () => (isLikelyMobile() ? '모바일/터치' : 'PC/키보드'),
@@ -185,6 +190,18 @@ function App() {
 
       {session.mode === 'playing' && (
         <>
+          <section
+            className={urgent ? 'panel panel--signal panel--signal-urgent' : 'panel panel--signal'}
+            aria-live="polite"
+          >
+            <strong>{urgent ? 'TIME WARNING' : 'RUNNING'}</strong>
+            <span>
+              {urgent
+                ? '⚠ Time is running out. Focus on short safe paths.'
+                : '✓ Stage is active. Keep collecting food.'}
+            </span>
+          </section>
+
           <section className="panel stats">
             <div>
               <span>Direction</span>
@@ -198,13 +215,7 @@ function App() {
             </div>
             <div>
               <span>Time Left</span>
-              <strong>
-                {Math.max(
-                  0,
-                  Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000),
-                )}
-                s
-              </strong>
+              <strong>{secondsLeft}s</strong>
             </div>
           </section>
 
@@ -218,7 +229,10 @@ function App() {
           />
 
           <section className="panel controls">
-            <p>키보드: Arrow/WASD · 모바일: 스와이프 · 즉시 역방향 차단</p>
+            <p>
+              키보드: Arrow/WASD · 모바일: 스와이프 · 즉시 역방향 차단 ·
+              상태신호: RUNNING / TIME WARNING
+            </p>
           </section>
         </>
       )}

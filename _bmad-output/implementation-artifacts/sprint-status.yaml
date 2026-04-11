@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T04:10:00+0900
+last_updated: 2026-04-12T04:20:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -53,10 +53,10 @@ development_status:
   3-3-local-progress-persistence: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-gameplay-hud-core-status: backlog
-  4-2-result-screen-next-retry-actions: backlog
-  4-3-responsive-accessible-hud: backlog
+  epic-4: done
+  4-1-gameplay-hud-core-status: done
+  4-2-result-screen-next-retry-actions: done
+  4-3-responsive-accessible-hud: done
   epic-4-retrospective: optional
 
   epic-5: backlog
