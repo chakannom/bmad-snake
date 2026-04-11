@@ -19,6 +19,11 @@ import { buildBalanceReport } from './balance/report'
 import { applyBalance, listBalancePatches } from './config/balance'
 import { readLogs, writeLog } from './diagnostics/logger'
 import {
+  createDailyChallengeHook,
+  createGhostReplayHook,
+  createThemeMapHook,
+} from './extensions/hooks'
+import {
   canPlayStage,
   loadProgress,
   saveProgress,
@@ -32,6 +37,9 @@ const TICK_MS = 180
 
 function App() {
   const analytics = useMemo(() => createGa4Adapter(), [])
+  const ghostHook = useMemo(() => createGhostReplayHook(), [])
+  const challengeHook = useMemo(() => createDailyChallengeHook(), [])
+  const themeHook = useMemo(() => createThemeMapHook(), [])
   const [session, setSession] = useState(initialSessionState)
   const [progress, setProgress] = useState<ProgressState>(() => loadProgress())
   const [game, setGame] = useState(() =>
@@ -40,9 +48,14 @@ function App() {
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
   const touchStartRef = useRef<Point | null>(null)
 
-  const selectedStage = applyBalance(getStageById(progress.selectedStageId))
+  const selectedStage = challengeHook.applyChallenge(
+    applyBalance(getStageById(progress.selectedStageId)),
+    new Date().toISOString().slice(0, 10),
+  )
+  const themeClass = themeHook.getThemeClass(selectedStage.id)
   const report = buildBalanceReport(eventLog)
   const recentLogs = readLogs().slice(-4)
+  const ghostFrames = ghostHook.exportReplay().length
   const secondsLeft = Math.max(
     0,
     Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000),
@@ -67,6 +80,7 @@ function App() {
     const interval = window.setInterval(() => {
       setGame((prev) => {
         const next = tick(prev, TICK_MS)
+        ghostHook.onTick(next)
 
         if (next.mode === 'failed') {
           const failResult =
@@ -130,7 +144,14 @@ function App() {
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-  }, [analytics, platformKey, selectedStage.id, session.mode, session.sessionId])
+  }, [
+    analytics,
+    ghostHook,
+    platformKey,
+    selectedStage.id,
+    session.mode,
+    session.sessionId,
+  ])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -157,8 +178,12 @@ function App() {
   }, [session.mode])
 
   const handleStart = () => {
-    const stage = applyBalance(getStageById(progress.selectedStageId))
+    const stage = challengeHook.applyChallenge(
+      applyBalance(getStageById(progress.selectedStageId)),
+      new Date().toISOString().slice(0, 10),
+    )
     const nextSession = startSession(session)
+    ghostHook.onSessionStart(stage.id)
     setGame(createInitialGame(stage))
     setSession(nextSession)
     writeLog('info', 'SESSION_START', 'Session started', {
@@ -184,7 +209,11 @@ function App() {
   }
 
   const handleRestart = () => {
-    const stage = applyBalance(getStageById(progress.selectedStageId))
+    const stage = challengeHook.applyChallenge(
+      applyBalance(getStageById(progress.selectedStageId)),
+      new Date().toISOString().slice(0, 10),
+    )
+    ghostHook.onSessionStart(stage.id)
     setGame(createInitialGame(stage))
     const nextSession = restartSession(session)
     setSession(nextSession)
@@ -234,7 +263,7 @@ function App() {
   }
 
   return (
-    <main className="shell">
+    <main className={`shell ${themeClass}`}>
       <header className="panel panel--header">
         <p className="eyebrow">BMAD Snake MVP</p>
         <h1>Stage Timer Snake</h1>
@@ -242,6 +271,7 @@ function App() {
           플랫폼: {platform} · 세션 #{session.sessionId || '-'} · 상태:{' '}
           {session.mode}
         </p>
+        <p className="muted">Theme: {themeClass} · Ghost Frames: {ghostFrames}</p>
       </header>
 
       {showPrivacyNotice ? (

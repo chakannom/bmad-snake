@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T04:40:00+0900
+last_updated: 2026-04-12T04:50:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -71,8 +71,8 @@ development_status:
   6-3-diagnostics-log-standardization: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-ghost-replay-extension-hook: backlog
-  7-2-daily-challenge-rule-hook: backlog
-  7-3-theme-map-extension-structure: backlog
+  epic-7: done
+  7-1-ghost-replay-extension-hook: done
+  7-2-daily-challenge-rule-hook: done
+  7-3-theme-map-extension-structure: done
   epic-7-retrospective: optional

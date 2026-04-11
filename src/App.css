@@ -6,6 +6,22 @@
   gap: 12px;
 }
 
+.shell.theme-citrus .panel--header {
+  background: linear-gradient(140deg, #fef3c7, #fdba74 52%, #fef9c3);
+}
+
+.shell.theme-forest .panel--header {
+  background: linear-gradient(140deg, #dcfce7, #86efac 52%, #bbf7d0);
+}
+
+.shell.theme-ocean .panel--header {
+  background: linear-gradient(140deg, #dbeafe, #93c5fd 52%, #cffafe);
+}
+
+.shell.theme-volcano .panel--header {
+  background: linear-gradient(140deg, #fee2e2, #fb7185 52%, #fecaca);
+}
+
 .panel {
   border: 2px solid var(--edge);
   background: var(--panel-bg);
