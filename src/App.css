@@ -1,0 +1,138 @@
+.shell {
+  width: min(980px, calc(100vw - 24px));
+  margin: 0 auto;
+  padding: 18px 0 34px;
+  display: grid;
+  gap: 12px;
+}
+
+.panel {
+  border: 2px solid var(--edge);
+  background: var(--panel-bg);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.panel--header {
+  background: linear-gradient(140deg, #fef3c7, #fca5a5 52%, #fef9c3);
+}
+
+.panel--centered {
+  text-align: center;
+  padding: 28px 16px;
+}
+
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+  color: #b45309;
+}
+
+h1 {
+  margin: 8px 0;
+  font-size: clamp(1.5rem, 2vw + 1rem, 2.4rem);
+}
+
+h2 {
+  margin: 0 0 8px;
+}
+
+.muted {
+  margin: 0;
+  color: #334155;
+}
+
+.cta,
+.ghost {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.65rem 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.cta {
+  background: #ea580c;
+  color: #fff;
+}
+
+.ghost {
+  border: 1px solid #334155;
+  background: transparent;
+  color: #1e293b;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stats div {
+  background: #fffbeb;
+  border-radius: 12px;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+}
+
+.stats span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.playfield {
+  border-radius: 18px;
+  border: 2px solid var(--edge);
+  background: #020617;
+  padding: 10px;
+}
+
+.playfield__grid {
+  display: grid;
+  gap: 4px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: #1e293b;
+}
+
+.cell--active {
+  background: radial-gradient(circle at 30% 25%, #fef9c3, #4ade80 58%, #14532d);
+}
+
+@media (max-width: 720px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controls button {
+    width: 100%;
+  }
+}

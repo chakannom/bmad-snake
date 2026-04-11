@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+  --edge: #0f172a;
+  --panel-bg: #ffffff;
+  font-family: 'IBM Plex Sans KR', 'Pretendard', 'Noto Sans KR', sans-serif;
+  color: #0f172a;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 600px at 10% 0%, #fde68a 0%, transparent 58%),
+    radial-gradient(900px 460px at 100% 100%, #fecaca 0%, transparent 60%),
+    #f8fafc;
+}
+
+h1,
+h2,
+button {
+  font-family: 'Space Grotesk', 'IBM Plex Sans KR', sans-serif;
+}
