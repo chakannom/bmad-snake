@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T04:00:00+0900
+last_updated: 2026-04-12T04:10:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -47,10 +47,10 @@ development_status:
   2-3-clear-fail-result-handling: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-stage-metadata-20maps-4tiers: backlog
-  3-2-stage-unlock-selection-flow: backlog
-  3-3-local-progress-persistence: backlog
+  epic-3: done
+  3-1-stage-metadata-20maps-4tiers: done
+  3-2-stage-unlock-selection-flow: done
+  3-3-local-progress-persistence: done
   epic-3-retrospective: optional
 
   epic-4: backlog

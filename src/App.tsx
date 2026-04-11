@@ -12,30 +12,37 @@ import {
   startSession,
 } from './game/sessionMachine'
 import { createInitialGame, tick, updateDirection } from './game/engine'
-import type { Point, StageDefinition } from './game/types'
+import { STAGES, getStageById } from './stage/catalog'
+import {
+  canPlayStage,
+  loadProgress,
+  saveProgress,
+  unlockNextStage,
+} from './progress/storage'
+import type { Point } from './game/types'
+import type { ProgressState } from './progress/types'
 import './App.css'
 
 const TICK_MS = 180
 
-const DEMO_STAGE: StageDefinition = {
-  id: 'stage-01',
-  name: 'Stage 01',
-  tier: 1,
-  width: 14,
-  height: 10,
-  timeLimitSec: 30,
-  goalFood: 5,
-}
-
 function App() {
   const [session, setSession] = useState(initialSessionState)
-  const [game, setGame] = useState(() => createInitialGame(DEMO_STAGE))
+  const [progress, setProgress] = useState<ProgressState>(() => loadProgress())
+  const [game, setGame] = useState(() =>
+    createInitialGame(getStageById(progress.selectedStageId)),
+  )
   const touchStartRef = useRef<Point | null>(null)
+
+  const selectedStage = getStageById(progress.selectedStageId)
 
   const platform = useMemo(
     () => (isLikelyMobile() ? '모바일/터치' : 'PC/키보드'),
     [],
   )
+
+  useEffect(() => {
+    saveProgress(progress)
+  }, [progress])
 
   useEffect(() => {
     if (session.mode !== 'playing') {
@@ -58,6 +65,7 @@ function App() {
             mode: 'cleared',
             endedReason: 'none',
           }))
+          setProgress((current) => unlockNextStage(current, selectedStage.id))
         }
 
         return next
@@ -65,7 +73,7 @@ function App() {
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-  }, [session.mode])
+  }, [selectedStage.id, session.mode])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -92,13 +100,19 @@ function App() {
   }, [session.mode])
 
   const handleStart = () => {
-    setGame(createInitialGame(DEMO_STAGE))
+    const stage = getStageById(progress.selectedStageId)
+    setGame(createInitialGame(stage))
     setSession((prev) => startSession(prev))
   }
 
   const handleRestart = () => {
-    setGame(createInitialGame(DEMO_STAGE))
+    const stage = getStageById(progress.selectedStageId)
+    setGame(createInitialGame(stage))
     setSession((prev) => restartSession(prev))
+  }
+
+  const handleSelectStage = (stageId: string) => {
+    setProgress((prev) => ({ ...prev, selectedStageId: stageId }))
   }
 
   const handleTouchStart = (x: number, y: number) => {
@@ -134,9 +148,37 @@ function App() {
       {(session.mode === 'idle' || session.mode === 'cleared') && (
         <section className="panel panel--centered">
           {session.mode === 'cleared' ? <h2>Stage Cleared</h2> : null}
-          <p>{DEMO_STAGE.name} · Goal {DEMO_STAGE.goalFood} · {DEMO_STAGE.timeLimitSec}s</p>
+          <p>
+            {selectedStage.name} · Tier {selectedStage.tier} · Goal{' '}
+            {selectedStage.goalFood} · {selectedStage.timeLimitSec}s
+          </p>
+
+          <div className="stage-grid">
+            {STAGES.map((stage) => {
+              const unlocked = canPlayStage(progress, stage.id)
+              const selected = stage.id === progress.selectedStageId
+              const className = unlocked
+                ? selected
+                  ? 'stage-button stage-button--selected'
+                  : 'stage-button'
+                : 'stage-button stage-button--locked'
+
+              return (
+                <button
+                  key={stage.id}
+                  className={className}
+                  onClick={() => handleSelectStage(stage.id)}
+                  disabled={!unlocked}
+                >
+                  <span>{stage.name}</span>
+                  <small>T{stage.tier}</small>
+                </button>
+              )
+            })}
+          </div>
+
           <button className="cta" onClick={handleStart}>
-            {session.mode === 'cleared' ? 'Play Again' : 'Start Session'}
+            {session.mode === 'cleared' ? 'Next Run' : 'Start Session'}
           </button>
         </section>
       )}
@@ -156,7 +198,13 @@ function App() {
             </div>
             <div>
               <span>Time Left</span>
-              <strong>{Math.max(0, Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000))}s</strong>
+              <strong>
+                {Math.max(
+                  0,
+                  Math.ceil((game.timeLimitSec * 1000 - game.elapsedMs) / 1000),
+                )}
+                s
+              </strong>
             </div>
           </section>
 
@@ -181,10 +229,13 @@ function App() {
           <p>실패 후 즉시 재시작할 수 있습니다.</p>
           <div className="row">
             <button className="cta" onClick={handleRestart}>
-              Restart
+              Retry Stage
             </button>
-            <button className="ghost" onClick={handleStart}>
-              New Session
+            <button
+              className="ghost"
+              onClick={() => setSession((prev) => ({ ...prev, mode: 'idle' }))}
+            >
+              Stage Select
             </button>
           </div>
         </section>
