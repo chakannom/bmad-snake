@@ -12,6 +12,7 @@ import {
   startSession,
 } from './game/sessionMachine'
 import { createInitialGame, tick, updateDirection } from './game/engine'
+import { createGa4Adapter } from './analytics/adapter'
 import { STAGES, getStageById } from './stage/catalog'
 import {
   canPlayStage,
@@ -26,11 +27,13 @@ import './App.css'
 const TICK_MS = 180
 
 function App() {
+  const analytics = useMemo(() => createGa4Adapter(), [])
   const [session, setSession] = useState(initialSessionState)
   const [progress, setProgress] = useState<ProgressState>(() => loadProgress())
   const [game, setGame] = useState(() =>
     createInitialGame(getStageById(progress.selectedStageId)),
   )
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
   const touchStartRef = useRef<Point | null>(null)
 
   const selectedStage = getStageById(progress.selectedStageId)
@@ -44,6 +47,7 @@ function App() {
     () => (isLikelyMobile() ? '모바일/터치' : 'PC/키보드'),
     [],
   )
+  const platformKey = platform.startsWith('모바일') ? 'mobile' : 'pc'
 
   useEffect(() => {
     saveProgress(progress)
@@ -59,12 +63,54 @@ function App() {
         const next = tick(prev, TICK_MS)
 
         if (next.mode === 'failed') {
+          const failResult =
+            next.reason === 'timeout' ? 'fail_timeout' : 'fail_collision'
+          analytics.track({
+            name: 'snake_session_end',
+            payload: {
+              snake_session_id: session.sessionId,
+              snake_stage_id: selectedStage.id,
+              snake_result: failResult,
+              snake_elapsed_ms: next.elapsedMs,
+              snake_platform: platformKey,
+            },
+          })
+          analytics.track({
+            name: 'snake_stage_fail',
+            payload: {
+              snake_session_id: session.sessionId,
+              snake_stage_id: selectedStage.id,
+              snake_result: failResult,
+              snake_elapsed_ms: next.elapsedMs,
+              snake_platform: platformKey,
+            },
+          })
           setSession((current) => ({
             ...current,
             mode: 'failed',
             endedReason: next.reason === 'timeout' ? 'timeout' : 'manual-fail',
           }))
         } else if (next.mode === 'cleared') {
+          analytics.track({
+            name: 'snake_session_end',
+            payload: {
+              snake_session_id: session.sessionId,
+              snake_stage_id: selectedStage.id,
+              snake_result: 'clear',
+              snake_elapsed_ms: next.elapsedMs,
+              snake_platform: platformKey,
+            },
+          })
+          analytics.track({
+            name: 'snake_stage_clear',
+            payload: {
+              snake_session_id: session.sessionId,
+              snake_stage_id: selectedStage.id,
+              snake_result: 'clear',
+              snake_elapsed_ms: next.elapsedMs,
+              snake_platform: platformKey,
+            },
+          })
           setSession((current) => ({
             ...current,
             mode: 'cleared',
@@ -78,7 +124,7 @@ function App() {
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-  }, [selectedStage.id, session.mode])
+  }, [analytics, platformKey, selectedStage.id, session.mode, session.sessionId])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -106,14 +152,48 @@ function App() {
 
   const handleStart = () => {
     const stage = getStageById(progress.selectedStageId)
+    const nextSession = startSession(session)
     setGame(createInitialGame(stage))
-    setSession((prev) => startSession(prev))
+    setSession(nextSession)
+    analytics.track({
+      name: 'snake_session_start',
+      payload: {
+        snake_session_id: nextSession.sessionId,
+        snake_stage_id: stage.id,
+        snake_platform: platformKey,
+      },
+    })
+    analytics.track({
+      name: 'snake_stage_enter',
+      payload: {
+        snake_session_id: nextSession.sessionId,
+        snake_stage_id: stage.id,
+        snake_platform: platformKey,
+      },
+    })
   }
 
   const handleRestart = () => {
     const stage = getStageById(progress.selectedStageId)
     setGame(createInitialGame(stage))
-    setSession((prev) => restartSession(prev))
+    const nextSession = restartSession(session)
+    setSession(nextSession)
+    analytics.track({
+      name: 'snake_stage_retry',
+      payload: {
+        snake_session_id: nextSession.sessionId,
+        snake_stage_id: stage.id,
+        snake_platform: platformKey,
+      },
+    })
+    analytics.track({
+      name: 'snake_session_start',
+      payload: {
+        snake_session_id: nextSession.sessionId,
+        snake_stage_id: stage.id,
+        snake_platform: platformKey,
+      },
+    })
   }
 
   const handleSelectStage = (stageId: string) => {
@@ -149,6 +229,23 @@ function App() {
           {session.mode}
         </p>
       </header>
+
+      {showPrivacyNotice ? (
+        <section className="panel panel--privacy" role="note" aria-live="polite">
+          <p>
+            Privacy Notice: this MVP stores stage progress locally and logs
+            anonymous gameplay events only. No personal identifiers are
+            collected.
+          </p>
+          <button
+            className="ghost"
+            onClick={() => setShowPrivacyNotice(false)}
+            aria-label="Hide privacy notice"
+          >
+            Dismiss
+          </button>
+        </section>
+      ) : null}
 
       {(session.mode === 'idle' || session.mode === 'cleared') && (
         <section className="panel panel--centered">

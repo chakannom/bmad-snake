@@ -18,6 +18,15 @@
   background: linear-gradient(140deg, #fef3c7, #fca5a5 52%, #fef9c3);
 }
 
+.panel--privacy {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-color: #334155;
+  background: #f8fafc;
+}
+
 .panel--centered {
   text-align: center;
   padding: 28px 16px;
@@ -187,6 +196,11 @@ h2 {
   }
 
   .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel--privacy {
     flex-direction: column;
     align-items: stretch;
   }

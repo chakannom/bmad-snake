@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T04:20:00+0900
+last_updated: 2026-04-12T04:30:00+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -59,10 +59,10 @@ development_status:
   4-3-responsive-accessible-hud: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-event-schema-analytics-adapter: backlog
-  5-2-ga4-kpi-instrumentation: backlog
-  5-3-privacy-minimal-collection-notice: backlog
+  epic-5: done
+  5-1-event-schema-analytics-adapter: done
+  5-2-ga4-kpi-instrumentation: done
+  5-3-privacy-minimal-collection-notice: done
   epic-5-retrospective: optional
 
   epic-6: backlog
