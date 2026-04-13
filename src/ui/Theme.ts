@@ -1,3 +1,3 @@
 export function applyTheme(): void {
-  // CSS variables in style.css handle theme tokens.
+  // style.css 기반 테마 사용
 }

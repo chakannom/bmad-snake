@@ -1,330 +1,321 @@
-import type { Direction, GameState, MapDefinition, UiRefs } from '../types/game';
-import { makeMap, TOTAL_MAPS } from '../maps/mapDefinitions';
-import { nextUnlockedMap } from '../maps/unlockRules';
-import { loadProgress, saveProgress } from '../storage/progressStore';
-import type { Settings } from '../storage/settingsStore';
-import { bindKeyboard } from '../input/KeyboardInput';
-import { bindTouchDirections } from '../input/TouchInput';
-import { isCollision } from './Collision';
+import { DEATH_PENALTY_RATIO, BOARD_SIZE, START_SNAKE, STAGES, TOTAL_STAGES } from '../maps/mapDefinitions';
+import { canTurn, isPauseKey, isRestartKey, nextDirectionFromKey } from '../input/KeyboardInput';
+import { bindSwipeInput } from '../input/TouchInput';
+import { createInitialState } from './GameState';
+import { applyDeathPenalty, resetStageRun, stepGame } from './Scoring';
+import { directionFromButton, mountGameUI } from '../ui/Controls';
+import { formatDeathStatus, formatPausedStatus, formatRunningStatus } from '../ui/Hud';
+import { nextStageIndex } from '../maps/unlockRules';
 import { Loop } from './Loop';
-import { didEatFood, isClear } from './Scoring';
-import { nextHead } from './Snake';
-import { createInitialState, isOpposite, spawnFood } from './GameState';
-import { syncHud } from '../ui/Hud';
-
-const BASE_SPEED = 8;
+import { loadProgress, saveProgress } from '../storage/progressStore';
+import type { Direction, StageConfig } from '../types/game';
 
 export class GameEngine {
-  private readonly ctx: CanvasRenderingContext2D;
-  private readonly loop: Loop;
+  private readonly ui;
+  private readonly state = createInitialState(STAGES[0].tickMs);
+  private readonly stages: StageConfig[];
+  private readonly loop = new Loop();
   private readonly cleanups: Array<() => void> = [];
+  private perfRafId: number | null = null;
+  private perfFrameCount = 0;
+  private perfLastSampleMs = performance.now();
+  private perfLastMobileLogMs = performance.now();
+  private currentFps = 0;
+  private readonly inputLatencySamples: number[] = [];
+  private readonly maxInputSamples = 120;
+  private pendingInputTimestampMs: number | null = null;
+  private unlockedStageIndex = 0;
+  private readonly clearedStageSet = new Set<number>();
 
-  private state: GameState;
-  private map: MapDefinition;
-  private selectedMapId = 1;
-  private unlockedMap = 1;
-  private clearedMaps = new Set<number>();
-  private fps = 0;
-  private frameCount = 0;
-  private fpsWindowStart = performance.now();
-  private inputLatencies: number[] = [];
-  private queuedInputAt: number | null = null;
-  private restartSelfTestPassed = false;
+  constructor(private readonly app: HTMLDivElement) {
+    this.ui = mountGameUI(this.app, BOARD_SIZE, TOTAL_STAGES);
+    const mobileSpeedFactor = this.ui.isDesktopMetrics ? 1 : 1.12;
+    this.stages = STAGES.map((stage) => ({
+      ...stage,
+      tickMs: Math.round(stage.tickMs * mobileSpeedFactor),
+    }));
+    this.hydrateProgress();
 
-  constructor(
-    private readonly root: HTMLElement,
-    private readonly refs: UiRefs,
-    private readonly settings: Settings,
-    private readonly onSettingsChange: (settings: Settings) => void,
-  ) {
-    const progress = loadProgress(TOTAL_MAPS);
-    this.unlockedMap = progress.unlockedMap;
-    this.clearedMaps = new Set(progress.clearedMaps);
-
-    this.map = makeMap(1);
-    this.state = createInitialState(this.map);
-    this.state.food = spawnFood(this.map, this.state.snake);
-
-    this.ctx = refs.canvas.getContext('2d')!;
-
-    this.loop = new Loop(
-      () => 1000 / (BASE_SPEED + Math.floor((this.selectedMapId - 1) / 4)),
-      (stepMs) => this.step(stepMs),
-      () => this.render(),
-    );
-
-    this.bindControls();
-    this.bindSettingsControls();
-    this.applyTouchSize();
-    this.resizeCanvas();
-    window.addEventListener('resize', this.resizeCanvas);
-    this.cleanups.push(() => window.removeEventListener('resize', this.resizeCanvas));
-
-    this.resetToMap(1);
-    this.restartSelfTestPassed = this.runRestartSelfTest();
-    this.loop.start();
-  }
-
-  private readonly resizeCanvas = (): void => {
-    const cssSize = Math.min(window.innerWidth - 24, 680);
-    const size = Math.max(300, cssSize);
-    const dpr = window.devicePixelRatio || 1;
-    this.refs.canvas.style.width = `${size}px`;
-    this.refs.canvas.style.height = `${size}px`;
-    this.refs.canvas.width = Math.floor(size * dpr);
-    this.refs.canvas.height = Math.floor(size * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.render();
-  };
-
-  private bindControls(): void {
-    const startBtn = this.root.querySelector<HTMLButtonElement>('#start-btn')!;
-    const pauseBtn = this.root.querySelector<HTMLButtonElement>('#pause-btn')!;
-    const restartBtn = this.root.querySelector<HTMLButtonElement>('#restart-btn')!;
-    const prevMapBtn = this.root.querySelector<HTMLButtonElement>('#prev-map')!;
-    const nextMapBtn = this.root.querySelector<HTMLButtonElement>('#next-map')!;
-
-    startBtn.addEventListener('click', () => {
-      if (this.state.status === 'idle' || this.state.status === 'gameover' || this.state.status === 'clear') {
-        this.startRound();
-      }
-      if (this.state.status === 'paused') {
-        this.state.status = 'running';
-        this.sync();
-      }
-    });
-
-    pauseBtn.addEventListener('click', () => {
-      if (this.state.status === 'running') {
-        this.state.status = 'paused';
-        this.sync();
-      }
-    });
-
-    restartBtn.addEventListener('click', () => this.startRound());
-
-    prevMapBtn.addEventListener('click', () => {
-      this.resetToMap(Math.max(1, this.selectedMapId - 1));
-    });
-
-    nextMapBtn.addEventListener('click', () => {
-      this.resetToMap(Math.min(this.unlockedMap, this.selectedMapId + 1));
-    });
-
-    this.cleanups.push(
-      bindTouchDirections(this.root, (dir) => this.queueDirection(dir)),
-      bindKeyboard(
-        (dir) => this.queueDirection(dir),
-        () => this.startRound(),
-        () => {
-          if (this.state.status === 'running') this.state.status = 'paused';
-          else if (this.state.status === 'paused') this.state.status = 'running';
-          this.sync();
-        },
-      ),
-    );
-  }
-
-  private bindSettingsControls(): void {
-    const soundEl = this.root.querySelector<HTMLInputElement>('#setting-sound');
-    const hapticEl = this.root.querySelector<HTMLInputElement>('#setting-haptic');
-    const touchSizeEl = this.root.querySelector<HTMLSelectElement>('#setting-touch-size');
-    if (!soundEl || !hapticEl || !touchSizeEl) return;
-
-    soundEl.checked = this.settings.soundEnabled;
-    hapticEl.checked = this.settings.hapticEnabled;
-    touchSizeEl.value = this.settings.touchSize;
-
-    const apply = (): void => {
-      this.settings.soundEnabled = soundEl.checked;
-      this.settings.hapticEnabled = hapticEl.checked;
-      this.settings.touchSize = touchSizeEl.value === 'lg' ? 'lg' : 'md';
-      this.applyTouchSize();
-      this.onSettingsChange(this.settings);
-    };
-
-    soundEl.addEventListener('change', apply);
-    hapticEl.addEventListener('change', apply);
-    touchSizeEl.addEventListener('change', apply);
-
-    this.cleanups.push(() => {
-      soundEl.removeEventListener('change', apply);
-      hapticEl.removeEventListener('change', apply);
-      touchSizeEl.removeEventListener('change', apply);
-    });
-  }
-
-  private applyTouchSize(): void {
-    this.root.classList.toggle('touch-lg', this.settings.touchSize === 'lg');
-  }
-
-  private queueDirection(next: Direction): void {
-    if (!isOpposite(this.state.pendingDir, next)) {
-      this.state.pendingDir = next;
-      this.queuedInputAt = performance.now();
-    }
-  }
-
-  private resetToMap(mapId: number): void {
-    if (mapId > this.unlockedMap) return;
-    this.selectedMapId = mapId;
-    this.map = makeMap(mapId);
-    this.state = createInitialState(this.map);
-    this.state.food = spawnFood(this.map, this.state.snake);
-    this.sync();
-  }
-
-  private startRound(): void {
-    this.state = createInitialState(this.map);
-    this.state.food = spawnFood(this.map, this.state.snake);
-    this.state.status = 'running';
-    this.sync();
-  }
-
-  private step(stepMs: number): void {
-    if (this.state.status !== 'running') return;
-
-    this.state.remainingSec -= stepMs / 1000;
-    if (this.state.remainingSec <= 0) {
-      this.state.remainingSec = 0;
-      this.state.status = 'gameover';
-      this.sync();
-      return;
-    }
-
-    if (this.state.pendingDir !== this.state.dir && this.queuedInputAt !== null) {
-      const latency = performance.now() - this.queuedInputAt;
-      this.inputLatencies.push(latency);
-      if (this.inputLatencies.length > 200) this.inputLatencies.shift();
-      this.queuedInputAt = null;
-    }
-    this.state.dir = this.state.pendingDir;
-    const next = nextHead(this.state.snake[0], this.state.dir);
-
-    if (isCollision(next, this.map, this.state.snake)) {
-      this.state.status = 'gameover';
-      this.sync();
-      return;
-    }
-
-    this.state.snake.unshift(next);
-    if (didEatFood(next, this.state.food)) {
-      this.state.score += 1;
-      this.state.food = spawnFood(this.map, this.state.snake);
-
-      if (isClear(this.state.score, this.map)) {
-        this.state.status = 'clear';
-        this.clearedMaps.add(this.selectedMapId);
-        this.unlockedMap = nextUnlockedMap(this.unlockedMap, this.selectedMapId, TOTAL_MAPS);
-        saveProgress({ unlockedMap: this.unlockedMap, clearedMaps: [...this.clearedMaps] });
-        this.sync();
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isRestartKey(event.code)) {
+        this.handleAction();
         return;
       }
-    } else {
-      this.state.snake.pop();
-    }
+      if (isPauseKey(event.code)) {
+        this.togglePause();
+        return;
+      }
 
-    this.sync();
+      const next = nextDirectionFromKey(event.code);
+      if (!next) return;
+      this.applyDirection(next, event.timeStamp);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    this.cleanups.push(() => window.removeEventListener('keydown', onKeyDown));
+
+    this.ui.directionButtons.forEach((button) => {
+      const onDown = (event: PointerEvent): void => {
+        event.preventDefault();
+        const next = directionFromButton(button);
+        if (!next) return;
+        this.applyDirection(next, event.timeStamp);
+      };
+      button.addEventListener('pointerdown', onDown);
+      this.cleanups.push(() => button.removeEventListener('pointerdown', onDown));
+    });
+
+    const onAction = (event: PointerEvent): void => {
+      event.preventDefault();
+      this.handleAction();
+    };
+    this.ui.actionButton.addEventListener('pointerdown', onAction);
+    this.cleanups.push(() => this.ui.actionButton.removeEventListener('pointerdown', onAction));
+
+    const onPause = (event: PointerEvent): void => {
+      event.preventDefault();
+      this.togglePause();
+    };
+    this.ui.pauseButton.addEventListener('pointerdown', onPause);
+    this.cleanups.push(() => this.ui.pauseButton.removeEventListener('pointerdown', onPause));
+
+    const onMapPrev = (event: PointerEvent): void => {
+      event.preventDefault();
+      this.moveMap(-1);
+    };
+    this.ui.mapPrevButton.addEventListener('pointerdown', onMapPrev);
+    this.cleanups.push(() => this.ui.mapPrevButton.removeEventListener('pointerdown', onMapPrev));
+
+    const onMapNext = (event: PointerEvent): void => {
+      event.preventDefault();
+      this.moveMap(1);
+    };
+    this.ui.mapNextButton.addEventListener('pointerdown', onMapNext);
+    this.cleanups.push(() => this.ui.mapNextButton.removeEventListener('pointerdown', onMapNext));
+
+    this.cleanups.push(bindSwipeInput(this.ui.canvas, (next, eventTimeStamp) => this.applyDirection(next, eventTimeStamp)));
+    this.startPerfMonitor();
+    this.prepareStage(this.state.stageIndex, false);
   }
 
-  private sync(): void {
-    syncHud(this.refs, {
-      status: this.state.status,
-      score: this.state.score,
-      remainingSec: this.state.remainingSec,
-      selectedMapId: this.selectedMapId,
-      targetScore: this.map.targetScore,
-      unlockedMap: this.unlockedMap,
-      fps: this.fps,
-      inputP95: this.getInputP95(),
-      restartSelfTestPassed: this.restartSelfTestPassed,
+  private currentStage = () => this.stages[this.state.stageIndex];
+
+  private renderAll(): void {
+    this.ui.updateHud(this.state, this.currentStage(), TOTAL_STAGES);
+    this.ui.updateMapButtons(
+      this.state.hasStarted || this.state.stageIndex <= 0,
+      this.state.hasStarted || this.state.stageIndex >= this.unlockedStageIndex,
+    );
+    if (this.ui.isDesktopMetrics) {
+      this.ui.updatePerfHud(this.currentFps, this.inputP95());
+    }
+    this.ui.renderBoard(this.state, this.currentStage());
+  }
+
+  private hydrateProgress(): void {
+    const progress = loadProgress();
+    if (!progress) return;
+
+    const clampIndex = (value: number): number => Math.max(0, Math.min(TOTAL_STAGES - 1, Math.floor(value)));
+
+    this.unlockedStageIndex = clampIndex(progress.unlockedMap);
+    this.state.stageIndex = Math.min(clampIndex(progress.stageIndex), this.unlockedStageIndex);
+    this.state.totalScore = Math.max(0, Math.floor(progress.totalScore));
+
+    progress.clearedMaps
+      .map(clampIndex)
+      .filter((index) => index <= this.unlockedStageIndex)
+      .forEach((index) => this.clearedStageSet.add(index));
+  }
+
+  private persistProgress(): void {
+    saveProgress({
+      stageIndex: this.state.stageIndex,
+      unlockedMap: this.unlockedStageIndex,
+      clearedMaps: Array.from(this.clearedStageSet).sort((a, b) => a - b),
+      totalScore: this.state.totalScore,
     });
   }
 
-  private render(): void {
-    this.frameCount += 1;
-    const now = performance.now();
-    const span = now - this.fpsWindowStart;
-    if (span >= 1000) {
-      this.fps = Math.round((this.frameCount * 1000) / span);
-      this.frameCount = 0;
-      this.fpsWindowStart = now;
-    }
-
-    const width = this.refs.canvas.clientWidth;
-    const height = this.refs.canvas.clientHeight;
-    const cellW = width / this.map.width;
-    const cellH = height / this.map.height;
-
-    this.ctx.clearRect(0, 0, width, height);
-    this.ctx.fillStyle = '#1b1b1d';
-    this.ctx.fillRect(0, 0, width, height);
-
-    this.ctx.strokeStyle = '#2f3032';
-    this.ctx.lineWidth = 1;
-
-    for (let x = 0; x <= this.map.width; x++) {
-      const px = x * cellW;
-      this.ctx.beginPath();
-      this.ctx.moveTo(px, 0);
-      this.ctx.lineTo(px, height);
-      this.ctx.stroke();
-    }
-
-    for (let y = 0; y <= this.map.height; y++) {
-      const py = y * cellH;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, py);
-      this.ctx.lineTo(width, py);
-      this.ctx.stroke();
-    }
-
-    this.ctx.fillStyle = '#3a3b3c';
-    for (const o of this.map.obstacles) {
-      this.ctx.fillRect(o.x * cellW, o.y * cellH, cellW, cellH);
-    }
-
-    this.ctx.fillStyle = '#25c2a0';
-    for (let i = this.state.snake.length - 1; i >= 0; i--) {
-      const part = this.state.snake[i];
-      const pad = i === 0 ? 1 : 2;
-      this.ctx.fillRect(part.x * cellW + pad, part.y * cellH + pad, cellW - pad * 2, cellH - pad * 2);
-    }
-
-    this.ctx.fillStyle = '#ff6b6b';
-    this.ctx.beginPath();
-    this.ctx.arc(
-      this.state.food.x * cellW + cellW / 2,
-      this.state.food.y * cellH + cellH / 2,
-      Math.min(cellW, cellH) * 0.32,
-      0,
-      Math.PI * 2,
-    );
-    this.ctx.fill();
+  private startPerfMonitor(): void {
+    this.perfLastSampleMs = performance.now();
+    this.perfLastMobileLogMs = this.perfLastSampleMs;
+    const tick = (now: number): void => {
+      this.perfFrameCount += 1;
+      const elapsed = now - this.perfLastSampleMs;
+      if (elapsed >= 500) {
+        this.currentFps = (this.perfFrameCount * 1000) / elapsed;
+        this.perfFrameCount = 0;
+        this.perfLastSampleMs = now;
+        const p95 = this.inputP95();
+        this.ui.updatePerfHud(this.currentFps, p95);
+        if (!this.ui.isDesktopMetrics && now - this.perfLastMobileLogMs >= 5000) {
+          const p95Text = p95 === null ? '-' : `${Math.round(p95)}ms`;
+          console.debug(`[perf/mobile] fps=${Math.round(this.currentFps)}, inputP95=${p95Text}`);
+          this.perfLastMobileLogMs = now;
+        }
+      }
+      this.perfRafId = window.requestAnimationFrame(tick);
+    };
+    this.perfRafId = window.requestAnimationFrame(tick);
   }
 
-  private getInputP95(): number {
-    if (this.inputLatencies.length === 0) return 0;
-    const sorted = [...this.inputLatencies].sort((a, b) => a - b);
-    const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95));
-    return Math.round(sorted[idx]);
+  private recordInputLatency(eventTimeStamp: number): void {
+    const latencyMs = performance.now() - eventTimeStamp;
+    if (!Number.isFinite(latencyMs) || latencyMs < 0) return;
+    this.inputLatencySamples.push(latencyMs);
+    if (this.inputLatencySamples.length > this.maxInputSamples) {
+      this.inputLatencySamples.shift();
+    }
   }
 
-  private runRestartSelfTest(): boolean {
-    for (let i = 0; i < 50; i++) {
-      const candidate = createInitialState(this.map);
-      const valid =
-        candidate.status === 'idle' &&
-        candidate.score === 0 &&
-        candidate.remainingSec === this.map.timeLimitSec &&
-        candidate.snake.length === 3;
-      if (!valid) return false;
-    }
-    return true;
+  private inputP95(): number | null {
+    if (this.inputLatencySamples.length === 0) return null;
+    const sorted = [...this.inputLatencySamples].sort((a, b) => a - b);
+    const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+    return sorted[index];
   }
+
+  private applyTimer(): void {
+    this.loop.restart(this.step, this.state.currentTickMs);
+  }
+
+  private finish(message: string): void {
+    this.state.isGameOver = true;
+    this.loop.stop();
+    this.persistProgress();
+    this.ui.statusEl.textContent = message;
+    this.renderAll();
+  }
+
+  private resetCurrentStageRun(statusMessage: string): void {
+    this.pendingInputTimestampMs = null;
+    resetStageRun(this.state, this.currentStage(), START_SNAKE);
+    this.persistProgress();
+    this.renderAll();
+    this.ui.statusEl.textContent = statusMessage;
+    this.applyTimer();
+  }
+
+  private startStage(nextStageIndex: number, resetTotalScore: boolean): void {
+    this.state.stageIndex = nextStageIndex;
+    this.state.stageScore = 0;
+    if (resetTotalScore) this.state.totalScore = 0;
+    this.state.hasStarted = true;
+    this.resetCurrentStageRun(formatRunningStatus(this.currentStage().level));
+  }
+
+  private prepareStage(nextStageIndex: number, resetTotalScore: boolean): void {
+    this.state.stageIndex = nextStageIndex;
+    this.state.stageScore = 0;
+    if (resetTotalScore) this.state.totalScore = 0;
+    this.state.hasStarted = false;
+    this.pendingInputTimestampMs = null;
+    resetStageRun(this.state, this.currentStage(), START_SNAKE);
+    this.loop.stop();
+    this.persistProgress();
+    this.renderAll();
+    this.ui.statusEl.textContent = `상태: Stage ${this.currentStage().level} 준비 (START)`;
+  }
+
+  private handleAction(): void {
+    if (!this.state.hasStarted) {
+      this.startStage(this.state.stageIndex, false);
+      return;
+    }
+    this.startStage(this.state.stageIndex, false);
+  }
+
+  private applyDirection(next: Direction, eventTimeStamp: number): void {
+    if (!canTurn(this.state.direction, next)) return;
+    if (this.state.nextDirection === next) return;
+    this.state.nextDirection = next;
+    this.pendingInputTimestampMs = eventTimeStamp;
+  }
+
+  private applyPendingDirection(): void {
+    if (this.state.direction === this.state.nextDirection) return;
+    this.state.direction = this.state.nextDirection;
+    if (this.pendingInputTimestampMs !== null) {
+      this.recordInputLatency(this.pendingInputTimestampMs);
+      this.pendingInputTimestampMs = null;
+    }
+  }
+
+  private moveMap(delta: -1 | 1): void {
+    if (this.state.hasStarted) return;
+    const nextIndex = this.state.stageIndex + delta;
+    if (nextIndex < 0 || nextIndex > this.unlockedStageIndex) return;
+    this.prepareStage(nextIndex, false);
+  }
+
+  private togglePause(): void {
+    if (!this.state.hasStarted || this.state.isGameOver || this.state.isCleared) return;
+
+    this.state.isPaused = !this.state.isPaused;
+    if (this.state.isPaused) {
+      this.loop.stop();
+      this.ui.statusEl.textContent = formatPausedStatus(this.currentStage().level);
+      this.renderAll();
+      return;
+    }
+
+    this.ui.statusEl.textContent = formatRunningStatus(this.currentStage().level);
+    this.renderAll();
+    this.applyTimer();
+  }
+
+  private handleDeath(): void {
+    applyDeathPenalty(this.state);
+    this.ui.flashFailure();
+    this.resetCurrentStageRun(formatDeathStatus(Math.round(DEATH_PENALTY_RATIO * 100), this.currentStage().level));
+  }
+
+  private readonly step = (): void => {
+    if (this.state.isGameOver || this.state.isCleared || this.state.isPaused) return;
+
+    this.applyPendingDirection();
+    const result = stepGame(this.state, this.currentStage());
+    if (result.speedChanged) {
+      this.applyTimer();
+    }
+
+    if (result.outcome === 'timeout') {
+      this.ui.flashFailure();
+      this.finish('상태: 제한 시간 실패');
+      return;
+    }
+
+    if (result.outcome === 'death') {
+      this.handleDeath();
+      return;
+    }
+
+    if (result.outcome === 'stage-clear') {
+      const cleared = this.state.stageIndex;
+      this.clearedStageSet.add(cleared);
+      this.unlockedStageIndex = Math.min(TOTAL_STAGES - 1, Math.max(this.unlockedStageIndex, cleared + 1));
+
+      const next = nextStageIndex(this.state.stageIndex, TOTAL_STAGES);
+      if (next === null) {
+        this.state.isCleared = true;
+        this.finish('상태: 모든 스테이지 클리어');
+        return;
+      }
+
+      this.prepareStage(next, false);
+      return;
+    }
+
+    this.renderAll();
+  };
 
   dispose(): void {
     this.loop.stop();
+    if (this.perfRafId !== null) {
+      window.cancelAnimationFrame(this.perfRafId);
+      this.perfRafId = null;
+    }
     this.cleanups.forEach((fn) => fn());
   }
 }

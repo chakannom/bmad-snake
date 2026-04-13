@@ -1,34 +1,56 @@
 export class Loop {
-  private rafId = 0;
-  private lastTs = 0;
-  private acc = 0;
+  private rafId: number | null = null;
+  private runId = 0;
+  private accumulatorMs = 0;
+  private lastTimeMs = 0;
+  private tickMs = 0;
+  private step: (() => void) | null = null;
+  private readonly maxCatchUpSteps = 5;
 
-  constructor(
-    private readonly getStepMs: () => number,
-    private readonly step: (stepMs: number) => void,
-    private readonly render: () => void,
-  ) {}
+  start(step: () => void, tickMs: number): void {
+    this.stop();
+    this.step = step;
+    this.tickMs = tickMs;
+    this.accumulatorMs = 0;
+    this.lastTimeMs = performance.now();
+    const activeRunId = this.runId;
 
-  start(): void {
-    const tick = (ts: number): void => {
-      if (!this.lastTs) this.lastTs = ts;
-      const delta = ts - this.lastTs;
-      this.lastTs = ts;
+    const frame = (now: number): void => {
+      if (!this.step || activeRunId !== this.runId) return;
 
-      const stepMs = this.getStepMs();
-      this.acc += delta;
-      while (this.acc >= stepMs) {
-        this.step(stepMs);
-        this.acc -= stepMs;
+      const deltaMs = Math.min(250, now - this.lastTimeMs);
+      this.lastTimeMs = now;
+      this.accumulatorMs += deltaMs;
+
+      let updates = 0;
+      while (this.accumulatorMs >= this.tickMs && updates < this.maxCatchUpSteps) {
+        const stepFn = this.step;
+        if (!stepFn || activeRunId !== this.runId) return;
+        stepFn();
+        if (activeRunId !== this.runId) return;
+        this.accumulatorMs -= this.tickMs;
+        updates += 1;
       }
-      this.render();
-      this.rafId = requestAnimationFrame(tick);
+
+      if (!this.step || activeRunId !== this.runId) return;
+      this.rafId = window.requestAnimationFrame(frame);
     };
 
-    this.rafId = requestAnimationFrame(tick);
+    this.rafId = window.requestAnimationFrame(frame);
+  }
+
+  restart(step: () => void, tickMs: number): void {
+    this.start(step, tickMs);
   }
 
   stop(): void {
-    cancelAnimationFrame(this.rafId);
+    this.runId += 1;
+    if (this.rafId !== null) {
+      window.cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.step = null;
+    this.accumulatorMs = 0;
+    this.lastTimeMs = 0;
   }
 }

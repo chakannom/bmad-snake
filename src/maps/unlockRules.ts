@@ -1,6 +1,4 @@
-export function nextUnlockedMap(currentUnlocked: number, selectedMap: number, maxMaps: number): number {
-  if (selectedMap === currentUnlocked && currentUnlocked < maxMaps) {
-    return currentUnlocked + 1;
-  }
-  return currentUnlocked;
+export function nextStageIndex(currentIndex: number, totalStages: number): number | null {
+  if (currentIndex >= totalStages - 1) return null;
+  return currentIndex + 1;
 }

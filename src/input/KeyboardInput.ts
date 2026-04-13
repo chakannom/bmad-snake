@@ -1,18 +1,26 @@
 import type { Direction } from '../types/game';
 
-export function bindKeyboard(onDirection: (dir: Direction) => void, onRestart: () => void, onTogglePause: () => void): () => void {
-  const onKeyDown = (ev: KeyboardEvent): void => {
-    if (ev.key === 'ArrowUp') onDirection('up');
-    if (ev.key === 'ArrowDown') onDirection('down');
-    if (ev.key === 'ArrowLeft') onDirection('left');
-    if (ev.key === 'ArrowRight') onDirection('right');
-    if (ev.key.toLowerCase() === 'r') onRestart();
-    if (ev.key === ' ') {
-      ev.preventDefault();
-      onTogglePause();
-    }
-  };
+const opposite: Record<Direction, Direction> = {
+  up: 'down',
+  down: 'up',
+  left: 'right',
+  right: 'left',
+};
 
-  window.addEventListener('keydown', onKeyDown);
-  return () => window.removeEventListener('keydown', onKeyDown);
-}
+const directionByKey: Record<string, Direction> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+};
+
+export const isRestartKey = (code: string): boolean => code === 'Space';
+export const isPauseKey = (code: string): boolean => code === 'KeyP';
+
+export const nextDirectionFromKey = (code: string): Direction | null => {
+  return directionByKey[code] ?? null;
+};
+
+export const canTurn = (current: Direction, next: Direction): boolean => {
+  return opposite[current] !== next;
+};
