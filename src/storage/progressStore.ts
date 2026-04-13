@@ -12,20 +12,26 @@ export function loadProgress(): Progress | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Progress>;
-
-    if (typeof parsed.stageIndex !== 'number' || typeof parsed.totalScore !== 'number') return null;
-
-    // Backward compatibility: old shape had only { stageIndex, totalScore }.
-    const unlockedMap = typeof parsed.unlockedMap === 'number' ? parsed.unlockedMap : parsed.stageIndex;
     const clearedMaps = Array.isArray(parsed.clearedMaps)
       ? parsed.clearedMaps.filter((value): value is number => typeof value === 'number')
       : [];
+    const unlockedMap = typeof parsed.unlockedMap === 'number' ? parsed.unlockedMap : null;
+
+    // Backward compatibility:
+    // - current: { stageIndex, unlockedMap, clearedMaps, totalScore }
+    // - old v1: { stageIndex, totalScore }
+    // - old v2: { unlockedMap, clearedMaps }
+    const stageIndex =
+      typeof parsed.stageIndex === 'number'
+        ? parsed.stageIndex
+        : unlockedMap ?? (clearedMaps.length ? Math.max(...clearedMaps) : 0);
+    const totalScore = typeof parsed.totalScore === 'number' ? parsed.totalScore : 0;
 
     return {
-      stageIndex: parsed.stageIndex,
-      unlockedMap,
+      stageIndex,
+      unlockedMap: unlockedMap ?? stageIndex,
       clearedMaps,
-      totalScore: parsed.totalScore,
+      totalScore,
     };
   } catch {
     return null;

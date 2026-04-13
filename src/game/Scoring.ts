@@ -49,7 +49,7 @@ export const resetStageRun = (state: GameState, stage: StageConfig, startSnake: 
 };
 
 export const stepGame = (state: GameState, stage: StageConfig): StepResult => {
-  state.remainingMs -= stage.tickMs;
+  state.remainingMs -= state.currentTickMs;
   if (state.remainingMs <= 0 && state.stageScore < stage.targetScore) {
     return { outcome: 'timeout', speedChanged: false };
   }

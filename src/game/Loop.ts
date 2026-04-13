@@ -1,5 +1,6 @@
 export class Loop {
   private rafId: number | null = null;
+  private runId = 0;
   private accumulatorMs = 0;
   private lastTimeMs = 0;
   private tickMs = 0;
@@ -12,9 +13,10 @@ export class Loop {
     this.tickMs = tickMs;
     this.accumulatorMs = 0;
     this.lastTimeMs = performance.now();
+    const activeRunId = this.runId;
 
     const frame = (now: number): void => {
-      if (!this.step) return;
+      if (!this.step || activeRunId !== this.runId) return;
 
       const deltaMs = Math.min(250, now - this.lastTimeMs);
       this.lastTimeMs = now;
@@ -22,11 +24,15 @@ export class Loop {
 
       let updates = 0;
       while (this.accumulatorMs >= this.tickMs && updates < this.maxCatchUpSteps) {
-        this.step();
+        const stepFn = this.step;
+        if (!stepFn || activeRunId !== this.runId) return;
+        stepFn();
+        if (activeRunId !== this.runId) return;
         this.accumulatorMs -= this.tickMs;
         updates += 1;
       }
 
+      if (!this.step || activeRunId !== this.runId) return;
       this.rafId = window.requestAnimationFrame(frame);
     };
 
@@ -38,6 +44,7 @@ export class Loop {
   }
 
   stop(): void {
+    this.runId += 1;
     if (this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
