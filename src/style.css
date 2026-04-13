@@ -176,7 +176,8 @@ p {
     gap: 6px;
   }
   .control-btn {
-    min-height: 40px;
+    min-width: 44px;
+    min-height: 44px;
     font-size: 0.92rem;
   }
   .control-btn.action,
