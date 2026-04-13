@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-12T03:24:09+0900
-last_updated: 2026-04-12T06:58:00+0900
+last_updated: 2026-04-13T16:22:49+0900
 project: bmad-snake
 project_key: NOKEY
 tracking_system: file-system
@@ -39,6 +39,8 @@ development_status:
   1-1-starter-template-setup: done
   1-2-session-start-restart-flow: done
   1-3-cross-platform-input-policy: done
+  1-4-pc-input-responsiveness-raf-tick-loop: done
+  1-5-platform-tick-speed-down-tuning: done
   epic-1-retrospective: optional
 
   epic-2: done

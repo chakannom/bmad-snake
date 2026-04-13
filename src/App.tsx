@@ -33,7 +33,8 @@ import type { Point } from './game/types'
 import type { ProgressState } from './progress/types'
 import './App.css'
 
-const TICK_MS = 180
+const MOBILE_TICK_MS = 220
+const PC_TICK_MS = 180
 
 function App() {
   const analytics = useMemo(() => createGa4Adapter(), [])
@@ -67,6 +68,7 @@ function App() {
     [],
   )
   const platformKey = platform.startsWith('모바일') ? 'mobile' : 'pc'
+  const tickMs = platformKey === 'pc' ? PC_TICK_MS : MOBILE_TICK_MS
 
   useEffect(() => {
     saveProgress(progress)
@@ -77,73 +79,90 @@ function App() {
       return undefined
     }
 
-    const interval = window.setInterval(() => {
-      setGame((prev) => {
-        const next = tick(prev, TICK_MS)
-        ghostHook.onTick(next)
+    let rafId = 0
+    let last = performance.now()
+    let accumulator = 0
 
-        if (next.mode === 'failed') {
-          const failResult =
-            next.reason === 'timeout' ? 'fail_timeout' : 'fail_collision'
-          analytics.track({
-            name: 'snake_session_end',
-            payload: {
-              snake_session_id: session.sessionId,
-              snake_stage_id: selectedStage.id,
-              snake_result: failResult,
-              snake_elapsed_ms: next.elapsedMs,
-              snake_platform: platformKey,
-            },
-          })
-          analytics.track({
-            name: 'snake_stage_fail',
-            payload: {
-              snake_session_id: session.sessionId,
-              snake_stage_id: selectedStage.id,
-              snake_result: failResult,
-              snake_elapsed_ms: next.elapsedMs,
-              snake_platform: platformKey,
-            },
-          })
-          setSession((current) => ({
-            ...current,
-            mode: 'failed',
-            endedReason: next.reason === 'timeout' ? 'timeout' : 'manual-fail',
-          }))
-        } else if (next.mode === 'cleared') {
-          analytics.track({
-            name: 'snake_session_end',
-            payload: {
-              snake_session_id: session.sessionId,
-              snake_stage_id: selectedStage.id,
-              snake_result: 'clear',
-              snake_elapsed_ms: next.elapsedMs,
-              snake_platform: platformKey,
-            },
-          })
-          analytics.track({
-            name: 'snake_stage_clear',
-            payload: {
-              snake_session_id: session.sessionId,
-              snake_stage_id: selectedStage.id,
-              snake_result: 'clear',
-              snake_elapsed_ms: next.elapsedMs,
-              snake_platform: platformKey,
-            },
-          })
-          setSession((current) => ({
-            ...current,
-            mode: 'cleared',
-            endedReason: 'none',
-          }))
-          setProgress((current) => unlockNextStage(current, selectedStage.id))
-        }
+    const onFrame = (now: number) => {
+      accumulator += now - last
+      last = now
+      let keepStepping = true
 
-        return next
-      })
-    }, TICK_MS)
+      while (accumulator >= tickMs && keepStepping) {
+        setGame((prev) => {
+          const next = tick(prev, tickMs)
+          ghostHook.onTick(next)
 
-    return () => window.clearInterval(interval)
+          if (prev.mode === 'playing' && next.mode === 'failed') {
+            const failResult =
+              next.reason === 'timeout' ? 'fail_timeout' : 'fail_collision'
+            analytics.track({
+              name: 'snake_session_end',
+              payload: {
+                snake_session_id: session.sessionId,
+                snake_stage_id: selectedStage.id,
+                snake_result: failResult,
+                snake_elapsed_ms: next.elapsedMs,
+                snake_platform: platformKey,
+              },
+            })
+            analytics.track({
+              name: 'snake_stage_fail',
+              payload: {
+                snake_session_id: session.sessionId,
+                snake_stage_id: selectedStage.id,
+                snake_result: failResult,
+                snake_elapsed_ms: next.elapsedMs,
+                snake_platform: platformKey,
+              },
+            })
+            setSession((current) => ({
+              ...current,
+              mode: 'failed',
+              endedReason: next.reason === 'timeout' ? 'timeout' : 'manual-fail',
+            }))
+            keepStepping = false
+          } else if (prev.mode === 'playing' && next.mode === 'cleared') {
+            analytics.track({
+              name: 'snake_session_end',
+              payload: {
+                snake_session_id: session.sessionId,
+                snake_stage_id: selectedStage.id,
+                snake_result: 'clear',
+                snake_elapsed_ms: next.elapsedMs,
+                snake_platform: platformKey,
+              },
+            })
+            analytics.track({
+              name: 'snake_stage_clear',
+              payload: {
+                snake_session_id: session.sessionId,
+                snake_stage_id: selectedStage.id,
+                snake_result: 'clear',
+                snake_elapsed_ms: next.elapsedMs,
+                snake_platform: platformKey,
+              },
+            })
+            setSession((current) => ({
+              ...current,
+              mode: 'cleared',
+              endedReason: 'none',
+            }))
+            setProgress((current) => unlockNextStage(current, selectedStage.id))
+            keepStepping = false
+          }
+
+          return next
+        })
+        accumulator -= tickMs
+      }
+
+      rafId = window.requestAnimationFrame(onFrame)
+    }
+
+    rafId = window.requestAnimationFrame(onFrame)
+
+    return () => window.cancelAnimationFrame(rafId)
   }, [
     analytics,
     ghostHook,
@@ -151,6 +170,7 @@ function App() {
     selectedStage.id,
     session.mode,
     session.sessionId,
+    tickMs,
   ])
 
   const restartFromAnyState = useCallback(() => {
