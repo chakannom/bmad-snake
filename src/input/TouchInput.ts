@@ -1,6 +1,9 @@
 import type { Direction } from '../types/game';
 
-export function bindSwipeInput(canvas: HTMLCanvasElement, applyDirection: (dir: Direction) => void): () => void {
+export function bindSwipeInput(
+  canvas: HTMLCanvasElement,
+  applyDirection: (dir: Direction, eventTimeStamp: number) => void,
+): () => void {
   let touchStartX: number | null = null;
   let touchStartY: number | null = null;
   const SWIPE_THRESHOLD = 20;
@@ -24,10 +27,10 @@ export function bindSwipeInput(canvas: HTMLCanvasElement, applyDirection: (dir: 
     if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
 
     if (absX > absY) {
-      applyDirection(dx > 0 ? 'right' : 'left');
+      applyDirection(dx > 0 ? 'right' : 'left', event.timeStamp);
       return;
     }
-    applyDirection(dy > 0 ? 'down' : 'up');
+    applyDirection(dy > 0 ? 'down' : 'up', event.timeStamp);
   };
 
   canvas.addEventListener('touchstart', onTouchStart, { passive: true });

@@ -21,8 +21,10 @@ export type GameState = {
   remainingMs: number;
   isGameOver: boolean;
   isCleared: boolean;
+  isPaused: boolean;
+  hasStarted: boolean;
   obstacleSet: Set<string>;
   currentTickMs: number;
 };
 
-export type GameStatus = 'ready' | 'running' | 'gameover' | 'cleared';
+export type GameStatus = 'ready' | 'running' | 'paused' | 'gameover' | 'cleared';

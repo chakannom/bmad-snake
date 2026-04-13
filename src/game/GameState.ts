@@ -12,6 +12,8 @@ export const createInitialState = (initialTickMs: number): GameState => ({
   remainingMs: 0,
   isGameOver: false,
   isCleared: false,
+  isPaused: false,
+  hasStarted: false,
   obstacleSet: new Set<string>(),
   currentTickMs: initialTickMs,
 });

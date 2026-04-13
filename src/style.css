@@ -54,6 +54,10 @@ p {
   font-size: 0.95rem;
 }
 
+.perf-hud {
+  color: var(--text-muted);
+}
+
 #game {
   width: 100%;
   height: auto;
@@ -64,13 +68,28 @@ p {
   touch-action: none;
 }
 
+#game.fail-flash {
+  animation: fail-flash 0.22s ease-out;
+}
+
+@keyframes fail-flash {
+  0% {
+    box-shadow: 0 0 0 2px #ff6b6bcc, 0 10px 24px #00000066;
+    filter: brightness(1.18);
+  }
+  100% {
+    box-shadow: 0 10px 24px #00000066;
+    filter: brightness(1);
+  }
+}
+
 .touch-controls {
   display: none;
   grid-template-columns: repeat(3, 1fr);
   grid-template-areas:
-    ". up ."
-    "left restart right"
-    ". down .";
+    "action up pause"
+    "left . right"
+    "map-prev down map-next";
   gap: 8px;
 }
 
@@ -94,6 +113,16 @@ p {
   grid-area: up;
 }
 
+.control-btn.action {
+  grid-area: action;
+  font-size: 0.8rem;
+}
+
+.control-btn.pause {
+  grid-area: pause;
+  font-size: 0.8rem;
+}
+
 .control-btn.left {
   grid-area: left;
 }
@@ -106,9 +135,14 @@ p {
   grid-area: down;
 }
 
-.control-btn.restart {
-  grid-area: restart;
-  font-size: 0.85rem;
+.control-btn.map-prev {
+  grid-area: map-prev;
+  font-size: 0.74rem;
+}
+
+.control-btn.map-next {
+  grid-area: map-next;
+  font-size: 0.74rem;
 }
 
 @media (hover: none), (pointer: coarse) {

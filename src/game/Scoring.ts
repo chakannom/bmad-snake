@@ -41,6 +41,7 @@ export const resetStageRun = (state: GameState, stage: StageConfig, startSnake: 
   state.snake = startSnake.map((segment) => ({ ...segment }));
   state.isGameOver = false;
   state.isCleared = false;
+  state.isPaused = false;
   state.obstacleSet = new Set(stage.obstacles.map(pointKey));
   state.remainingMs = stage.timeLimitSec * 1000;
   state.currentTickMs = stage.tickMs;

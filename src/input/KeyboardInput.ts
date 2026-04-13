@@ -15,6 +15,7 @@ const directionByKey: Record<string, Direction> = {
 };
 
 export const isRestartKey = (code: string): boolean => code === 'Space';
+export const isPauseKey = (code: string): boolean => code === 'KeyP';
 
 export const nextDirectionFromKey = (code: string): Direction | null => {
   return directionByKey[code] ?? null;
