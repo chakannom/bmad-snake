@@ -1,24 +1,40 @@
 import type { Direction } from '../types/game';
 
-export function bindTouchDirections(root: HTMLElement, onDirection: (dir: Direction) => void): () => void {
-  const buttons = root.querySelectorAll<HTMLButtonElement>('[data-dir]');
-  const cleanups: Array<() => void> = [];
+export function bindSwipeInput(canvas: HTMLCanvasElement, applyDirection: (dir: Direction) => void): () => void {
+  let touchStartX: number | null = null;
+  let touchStartY: number | null = null;
+  const SWIPE_THRESHOLD = 20;
 
-  for (const btn of buttons) {
-    const dir = btn.dataset.dir as Direction;
-    const onPress = (ev: Event): void => {
-      ev.preventDefault();
-      onDirection(dir);
-    };
+  const onTouchStart = (event: TouchEvent): void => {
+    if (event.touches.length !== 1) return;
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  };
 
-    btn.addEventListener('pointerdown', onPress, { passive: false });
-    btn.addEventListener('click', onPress);
+  const onTouchEnd = (event: TouchEvent): void => {
+    if (touchStartX === null || touchStartY === null) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    touchStartX = null;
+    touchStartY = null;
 
-    cleanups.push(() => {
-      btn.removeEventListener('pointerdown', onPress);
-      btn.removeEventListener('click', onPress);
-    });
-  }
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
 
-  return () => cleanups.forEach((fn) => fn());
+    if (absX > absY) {
+      applyDirection(dx > 0 ? 'right' : 'left');
+      return;
+    }
+    applyDirection(dy > 0 ? 'down' : 'up');
+  };
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+  canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+
+  return () => {
+    canvas.removeEventListener('touchstart', onTouchStart);
+    canvas.removeEventListener('touchend', onTouchEnd);
+  };
 }

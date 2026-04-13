@@ -1,34 +1,19 @@
 export class Loop {
-  private rafId = 0;
-  private lastTs = 0;
-  private acc = 0;
+  private timer: number | null = null;
 
-  constructor(
-    private readonly getStepMs: () => number,
-    private readonly step: (stepMs: number) => void,
-    private readonly render: () => void,
-  ) {}
+  start(step: () => void, tickMs: number): void {
+    this.stop();
+    this.timer = window.setInterval(step, tickMs);
+  }
 
-  start(): void {
-    const tick = (ts: number): void => {
-      if (!this.lastTs) this.lastTs = ts;
-      const delta = ts - this.lastTs;
-      this.lastTs = ts;
-
-      const stepMs = this.getStepMs();
-      this.acc += delta;
-      while (this.acc >= stepMs) {
-        this.step(stepMs);
-        this.acc -= stepMs;
-      }
-      this.render();
-      this.rafId = requestAnimationFrame(tick);
-    };
-
-    this.rafId = requestAnimationFrame(tick);
+  restart(step: () => void, tickMs: number): void {
+    this.start(step, tickMs);
   }
 
   stop(): void {
-    cancelAnimationFrame(this.rafId);
+    if (this.timer !== null) {
+      window.clearInterval(this.timer);
+      this.timer = null;
+    }
   }
 }

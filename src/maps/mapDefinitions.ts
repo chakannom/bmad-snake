@@ -1,94 +1,114 @@
-import type { MapDefinition, Point } from '../types/game';
+import type { Point, StageConfig } from '../types/game';
 
-const GRID_SIZE = 24;
+export const BOARD_SIZE = 20;
+export const CELL = 20;
+export const TOTAL_STAGES = 20;
+export const DEATH_PENALTY_RATIO = 0.3;
+export const MIN_TICK_MS = 52;
+export const SPEED_UP_PER_FOOD_MS = 2;
 
-const TARGET_TABLE: Array<{ timeLimitSec: number; targetScore: number }> = [
-  { timeLimitSec: 90, targetScore: 6 },
-  { timeLimitSec: 90, targetScore: 7 },
-  { timeLimitSec: 85, targetScore: 8 },
-  { timeLimitSec: 85, targetScore: 9 },
-  { timeLimitSec: 80, targetScore: 10 },
-  { timeLimitSec: 80, targetScore: 11 },
-  { timeLimitSec: 75, targetScore: 12 },
-  { timeLimitSec: 75, targetScore: 13 },
-  { timeLimitSec: 70, targetScore: 14 },
-  { timeLimitSec: 70, targetScore: 15 },
-  { timeLimitSec: 65, targetScore: 16 },
-  { timeLimitSec: 65, targetScore: 17 },
-  { timeLimitSec: 60, targetScore: 18 },
-  { timeLimitSec: 60, targetScore: 19 },
-  { timeLimitSec: 55, targetScore: 20 },
-  { timeLimitSec: 55, targetScore: 22 },
-  { timeLimitSec: 50, targetScore: 24 },
-  { timeLimitSec: 50, targetScore: 26 },
-  { timeLimitSec: 45, targetScore: 28 },
-  { timeLimitSec: 45, targetScore: 30 },
+export const START_SNAKE: Point[] = [
+  { x: 4, y: 10 },
+  { x: 3, y: 10 },
+  { x: 2, y: 10 },
 ];
 
-function pointKey({ x, y }: Point): string {
-  return `${x},${y}`;
+function pointKey(point: Point): string {
+  return `${point.x},${point.y}`;
 }
 
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-export const TOTAL_MAPS = 20;
-
-export function makeMap(id: number): MapDefinition {
-  const center = Math.floor(GRID_SIZE / 2);
-  const obstacles: Point[] = [];
-  const pattern = (id - 1) % 5;
-
-  if (pattern === 0) {
-    for (let y = 4; y < GRID_SIZE - 4; y += 2) {
-      obstacles.push({ x: center - 4, y }, { x: center + 4, y });
-    }
-  }
-
-  if (pattern === 1) {
-    for (let x = 4; x < GRID_SIZE - 4; x++) {
-      if (x % 3 !== 0) obstacles.push({ x, y: center - 5 }, { x, y: center + 5 });
-    }
-  }
-
-  if (pattern === 2) {
-    for (let i = 3; i < GRID_SIZE - 3; i++) {
-      if (i % 4 !== 0) obstacles.push({ x: i, y: i }, { x: GRID_SIZE - 1 - i, y: i });
-    }
-  }
-
-  if (pattern === 3) {
-    for (let x = 2; x < GRID_SIZE - 2; x++) {
-      if (x < center - 2 || x > center + 2) obstacles.push({ x, y: 2 }, { x, y: GRID_SIZE - 3 });
-    }
-    for (let y = 2; y < GRID_SIZE - 2; y++) {
-      if (y < center - 2 || y > center + 2) obstacles.push({ x: 2, y }, { x: GRID_SIZE - 3, y });
-    }
-  }
-
-  if (pattern === 4) {
-    for (let i = 4; i < GRID_SIZE - 4; i += 2) {
-      obstacles.push({ x: i, y: center }, { x: center, y: i });
-    }
-  }
-
-  const unique = new Map<string, Point>();
-  for (const p of obstacles) unique.set(pointKey(p), p);
-
-  const levelScale = Math.floor((id - 1) / 5);
-  for (let i = 0; i < levelScale * 4; i++) {
-    const p = { x: randomInt(3, GRID_SIZE - 4), y: randomInt(3, GRID_SIZE - 4) };
-    unique.set(pointKey(p), p);
-  }
-
-  const row = TARGET_TABLE[id - 1] ?? TARGET_TABLE[TARGET_TABLE.length - 1];
-  return {
-    id,
-    width: GRID_SIZE,
-    height: GRID_SIZE,
-    timeLimitSec: row.timeLimitSec,
-    targetScore: row.targetScore,
-    obstacles: [...unique.values()],
+function makeRng(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value = (1664525 * value + 1013904223) >>> 0;
+    return value / 0x100000000;
   };
 }
+
+const reservedStartSet = (): Set<string> => {
+  const reserved = new Set<string>();
+  START_SNAKE.forEach((segment) => reserved.add(pointKey(segment)));
+  for (let x = 0; x <= 6; x += 1) {
+    for (let y = 8; y <= 12; y += 1) {
+      reserved.add(`${x},${y}`);
+    }
+  }
+  return reserved;
+};
+
+const createObstacles = (level: number): Point[] => {
+  const obstacleSet = new Set<string>();
+  const reserved = reservedStartSet();
+
+  const add = (x: number, y: number): void => {
+    if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return;
+    const key = `${x},${y}`;
+    if (reserved.has(key)) return;
+    obstacleSet.add(key);
+  };
+
+  const addVertical = (x: number, fromY: number, toY: number, gapY: number): void => {
+    for (let y = fromY; y <= toY; y += 1) {
+      if (y === gapY) continue;
+      add(x, y);
+    }
+  };
+
+  const addHorizontal = (y: number, fromX: number, toX: number, gapX: number): void => {
+    for (let x = fromX; x <= toX; x += 1) {
+      if (x === gapX) continue;
+      add(x, y);
+    }
+  };
+
+  if (level >= 2) addVertical(10, 2, 17, 10);
+  if (level >= 3) addHorizontal(10, 5, 17, 13);
+  if (level >= 4) addVertical(14, 3, 16, 8);
+  if (level >= 5) addHorizontal(6, 5, 18, 11);
+  if (level >= 6) addVertical(7, 2, 15, 12);
+  if (level >= 7) addHorizontal(14, 6, 18, 9);
+  if (level >= 8) addVertical(16, 2, 17, 6);
+  if (level >= 9) addHorizontal(3, 7, 18, 15);
+  if (level >= 10) addVertical(12, 2, 17, 5);
+  if (level >= 11) addHorizontal(16, 6, 18, 8);
+  if (level >= 12) addVertical(18, 1, 18, 11);
+  if (level >= 13) addHorizontal(8, 6, 19, 17);
+  if (level >= 14) addVertical(9, 1, 17, 14);
+  if (level >= 15) addHorizontal(12, 7, 19, 10);
+  if (level >= 16) addVertical(15, 1, 18, 13);
+  if (level >= 17) addHorizontal(5, 8, 19, 18);
+  if (level >= 18) addVertical(11, 1, 18, 4);
+  if (level >= 19) addHorizontal(17, 7, 19, 16);
+  if (level >= 20) addVertical(17, 1, 18, 9);
+
+  const rng = makeRng(level * 97 + 11);
+  const randomBlocks = level * 2;
+  let placed = 0;
+  let attempts = 0;
+  while (placed < randomBlocks && attempts < 5000) {
+    attempts += 1;
+    const x = Math.floor(rng() * BOARD_SIZE);
+    const y = Math.floor(rng() * BOARD_SIZE);
+    const key = `${x},${y}`;
+    if (reserved.has(key) || obstacleSet.has(key)) continue;
+    obstacleSet.add(key);
+    placed += 1;
+  }
+
+  return Array.from(obstacleSet).map((key) => {
+    const [x, y] = key.split(',').map(Number);
+    return { x, y };
+  });
+};
+
+export const STAGES: StageConfig[] = Array.from({ length: TOTAL_STAGES }, (_, index) => {
+  const level = index + 1;
+  return {
+    level,
+    mapName: `Map-${String(level).padStart(2, '0')}`,
+    targetScore: 40 + level * 10,
+    timeLimitSec: Math.max(18, 34 - Math.floor(level / 2)),
+    tickMs: Math.max(70, 125 - level * 2),
+    obstacles: createObstacles(level),
+  };
+});

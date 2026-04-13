@@ -1,37 +1,28 @@
-export type Status = 'idle' | 'running' | 'paused' | 'gameover' | 'clear';
+export type Point = { x: number; y: number };
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
-export type Point = { x: number; y: number };
-
-export type MapDefinition = {
-  id: number;
-  width: number;
-  height: number;
-  timeLimitSec: number;
+export type StageConfig = {
+  level: number;
+  mapName: string;
   targetScore: number;
+  timeLimitSec: number;
+  tickMs: number;
   obstacles: Point[];
 };
 
 export type GameState = {
-  status: Status;
   snake: Point[];
+  direction: Direction;
+  nextDirection: Direction;
   food: Point;
-  dir: Direction;
-  pendingDir: Direction;
-  score: number;
-  remainingSec: number;
+  stageIndex: number;
+  stageScore: number;
+  totalScore: number;
+  remainingMs: number;
+  isGameOver: boolean;
+  isCleared: boolean;
+  obstacleSet: Set<string>;
+  currentTickMs: number;
 };
 
-export type UiRefs = {
-  canvas: HTMLCanvasElement;
-  statusEl: HTMLElement;
-  scoreEl: HTMLElement;
-  timerEl: HTMLElement;
-  mapEl: HTMLElement;
-  targetEl: HTMLElement;
-  unlockedEl: HTMLElement;
-  fpsEl: HTMLElement;
-  inputP95El: HTMLElement;
-  restartTestEl: HTMLElement;
-  overlayHintEl: HTMLElement;
-};
+export type GameStatus = 'ready' | 'running' | 'gameover' | 'cleared';

@@ -1,27 +1,20 @@
 export type Settings = {
-  soundEnabled: boolean;
-  hapticEnabled: boolean;
-  touchSize: 'md' | 'lg';
+  touchControlsEnabled: boolean;
 };
 
-const SETTINGS_KEY = 'bmad-snake-settings-v1';
-
-const DEFAULT_SETTINGS: Settings = {
-  soundEnabled: false,
-  hapticEnabled: false,
-  touchSize: 'md',
-};
+const KEY = 'bmad-snake-settings-v1';
 
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return { touchControlsEnabled: true };
+    const parsed = JSON.parse(raw) as Partial<Settings>;
+    return { touchControlsEnabled: parsed.touchControlsEnabled ?? true };
   } catch {
-    return DEFAULT_SETTINGS;
+    return { touchControlsEnabled: true };
   }
 }
 
 export function saveSettings(settings: Settings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(KEY, JSON.stringify(settings));
 }
