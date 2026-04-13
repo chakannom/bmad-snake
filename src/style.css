@@ -152,10 +152,38 @@ p {
 }
 
 @media (max-width: 480px) {
+  body {
+    padding: 8px;
+  }
   .layout {
     width: 100%;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  h1 {
+    font-size: 1.12rem;
   }
   .hud {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
+    gap: 2px 8px;
+  }
+  #game {
+    width: min(100%, 320px);
+    margin-inline: auto;
+  }
+  .touch-controls {
+    gap: 6px;
+  }
+  .control-btn {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 0.92rem;
+  }
+  .control-btn.action,
+  .control-btn.pause,
+  .control-btn.map-prev,
+  .control-btn.map-next {
+    font-size: 0.7rem;
   }
 }
