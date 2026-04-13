@@ -41,6 +41,7 @@ GPT-5 Codex
 
 - 경고/실패/클리어 텍스트 신호 보강 완료
 - 모바일에서 액션 버튼/문구 겹침 없는 배치 유지
+- PC에서 `R` 키로 즉시 재시작 가능한 단축 입력 지원
 
 ### File List
 
@@ -50,3 +51,4 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-04-12: Story completed (result signals + accessibility copy polish)
+- 2026-04-13: keyboard restart shortcut (`R`) 및 안내 문구 반영

@@ -41,6 +41,7 @@ GPT-5 Codex
 
 - HUD/보드/버튼 간 간격 및 글자 크기 미세 조정 완료
 - 모바일 coarse pointer에서 터치 컨트롤 표시 검증
+- 모바일 방향 버튼 중앙 `restart`를 하단 행으로 이동해 조작 동선 개선
 
 ### File List
 
@@ -50,3 +51,4 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-04-12: Story completed (compact HUD + board + touch controls)
+- 2026-04-13: touch-controls grid에서 restart 버튼 위치를 하단으로 조정

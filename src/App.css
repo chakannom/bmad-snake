@@ -225,8 +225,9 @@ li {
   grid-template-columns: repeat(3, 1fr);
   grid-template-areas:
     '. up .'
-    'left restart right'
-    '. down .';
+    'left . right'
+    '. down .'
+    'restart restart restart';
   gap: 8px;
 }
 
@@ -265,6 +266,7 @@ li {
 .control-btn.restart {
   grid-area: restart;
   font-size: 0.85rem;
+  min-height: 40px;
 }
 
 @media (hover: none), (pointer: coarse) {

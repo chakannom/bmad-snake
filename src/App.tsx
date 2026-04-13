@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Playfield } from './components/Playfield'
 import {
   directionFromKeyboardKey,
@@ -153,8 +153,47 @@ function App() {
     session.sessionId,
   ])
 
+  const restartFromAnyState = useCallback(() => {
+    const stage = challengeHook.applyChallenge(
+      applyBalance(getStageById(progress.selectedStageId)),
+      new Date().toISOString().slice(0, 10),
+    )
+    ghostHook.onSessionStart(stage.id)
+    setGame(createInitialGame(stage))
+    setSession((prev) => {
+      const nextSession = restartSession(prev)
+      writeLog('info', 'STAGE_RETRY', 'Retry from keyboard/button', {
+        sessionId: nextSession.sessionId,
+        stageId: stage.id,
+      })
+      analytics.track({
+        name: 'snake_stage_retry',
+        payload: {
+          snake_session_id: nextSession.sessionId,
+          snake_stage_id: stage.id,
+          snake_platform: platformKey,
+        },
+      })
+      analytics.track({
+        name: 'snake_session_start',
+        payload: {
+          snake_session_id: nextSession.sessionId,
+          snake_stage_id: stage.id,
+          snake_platform: platformKey,
+        },
+      })
+      return nextSession
+    })
+  }, [analytics, challengeHook, ghostHook, platformKey, progress.selectedStageId])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault()
+        restartFromAnyState()
+        return
+      }
+
       if (session.mode !== 'playing') {
         return
       }
@@ -175,7 +214,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [session.mode])
+  }, [restartFromAnyState, session.mode])
 
   const handleStart = () => {
     const stage = challengeHook.applyChallenge(
@@ -208,36 +247,7 @@ function App() {
     })
   }
 
-  const handleRestart = () => {
-    const stage = challengeHook.applyChallenge(
-      applyBalance(getStageById(progress.selectedStageId)),
-      new Date().toISOString().slice(0, 10),
-    )
-    ghostHook.onSessionStart(stage.id)
-    setGame(createInitialGame(stage))
-    const nextSession = restartSession(session)
-    setSession(nextSession)
-    writeLog('info', 'STAGE_RETRY', 'Retry from failure screen', {
-      sessionId: nextSession.sessionId,
-      stageId: stage.id,
-    })
-    analytics.track({
-      name: 'snake_stage_retry',
-      payload: {
-        snake_session_id: nextSession.sessionId,
-        snake_stage_id: stage.id,
-        snake_platform: platformKey,
-      },
-    })
-    analytics.track({
-      name: 'snake_session_start',
-      payload: {
-        snake_session_id: nextSession.sessionId,
-        snake_stage_id: stage.id,
-        snake_platform: platformKey,
-      },
-    })
-  }
+  const handleRestart = restartFromAnyState
 
   const handleSelectStage = (stageId: string) => {
     setProgress((prev) => ({ ...prev, selectedStageId: stageId }))
@@ -427,7 +437,7 @@ function App() {
           <section className="panel controls">
             <p>
               키보드: Arrow/WASD · 모바일: 스와이프 · 즉시 역방향 차단 ·
-              상태신호: RUNNING / TIME WARNING
+              상태신호: RUNNING / TIME WARNING · 재시작: R 키
             </p>
           </section>
 
